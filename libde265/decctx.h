@@ -349,6 +349,7 @@ class decoder_context : public base_context {
   int  param_vps_headers_fd;
   int  param_pps_headers_fd;
   int  param_slice_headers_fd;
+  int  param_image_data_fd;
 
   bool param_disable_deblocking;
   bool param_disable_sao;

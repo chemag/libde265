@@ -223,6 +223,7 @@ decoder_context::decoder_context()
   param_vps_headers_fd = -1;
   param_pps_headers_fd = -1;
   param_slice_headers_fd = -1;
+  param_image_data_fd = -1;
 
   param_image_allocation_functions = de265_image::default_image_allocation;
   param_image_allocation_userdata  = NULL;
@@ -749,6 +750,10 @@ de265_error decoder_context::decode_some(bool* did_work)
     image_unit* imgunit = image_units[0];
 
     *did_work=true;
+
+    if (param_image_data_fd>=0) {
+      dump_image_data(imgunit->img, param_image_data_fd);
+    }
 
 
     // mark all CTBs as decoded even if they are not, because faulty input

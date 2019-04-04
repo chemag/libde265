@@ -1502,6 +1502,106 @@ void slice_segment_header::dump_slice_segment_header(const decoder_context* ctx,
   //#endif
 }
 
+void dump_image_data_qp_distro(const de265_image* img, int fd)
+{
+  FILE* fh;
+  if (fd==1) fh=stdout;
+  else if (fd==2) fh=stderr;
+  else { return; }
+
+#define LOG0(t) log2fh(fh, t)
+#define LOG1(t,d) log2fh(fh, t,d)
+#define LOG2(t,d1,d2) log2fh(fh, t,d1,d2)
+#define LOG3(t,d1,d2,d3) log2fh(fh, t,d1,d2,d3)
+#define LOG4(t,d1,d2,d3,d4) log2fh(fh, t,d1,d2,d3,d4)
+
+  const seq_parameter_set& sps = img->get_sps();
+  int minCbSize = sps.MinCbSizeY;
+
+  // calculate QP distro
+  int qp_distro[100];
+  for (int q=0;q<100;q++)
+    qp_distro[q] = 0;
+
+  for (int y0=0;y0<sps.PicHeightInMinCbsY;y0++)
+    for (int x0=0;x0<sps.PicWidthInMinCbsY;x0++)
+      {
+        int log2CbSize = img->get_log2CbSize_cbUnits(x0,y0);
+        if (log2CbSize==0) {
+          continue;
+        }
+
+        int xb = x0*minCbSize;
+        int yb = y0*minCbSize;
+
+        int CbSize = 1<<log2CbSize;
+        //printf("----qp_distro value---- x0: %i, y0: %i, xb: %i, yb: %i, log2CbSize: %i, CbSize: %i\n", x0, y0, xb, yb, log2CbSize, CbSize); // XXX
+
+        int q = img->get_QPY(xb,yb);
+        if (q < 0 || q >= 100) {
+          LOG1("error: q: %d\n",q);
+        } else {
+          //qp_distro[q] += (CbSize*CbSize);
+          qp_distro[q] += 1;
+        }
+      }
+
+  // dump QP distro
+  bool first_nonzero = false;
+  int lowest_nonzero = 0;
+  int highest_nonzero = 0;
+#define BUFSIZE 1024
+  char buffer[BUFSIZE] = {};
+  int bi = 0;
+  for (int q=0;q<100;q++)
+    {
+    if (qp_distro[q] != 0 && !first_nonzero)
+      {
+      first_nonzero = true;
+      lowest_nonzero = q;
+      }
+    if (qp_distro[q] != 0)
+      highest_nonzero = q;
+    }
+  bi += snprintf(buffer+bi, BUFSIZE-bi, "qp_distro[%i:%i] { ", lowest_nonzero, highest_nonzero);
+  for (int q=0;q<100;q++)
+    {
+    if (q < lowest_nonzero || q > highest_nonzero)
+      continue;
+    bi += snprintf(buffer+bi, BUFSIZE-bi, "%d ", qp_distro[q]);
+    }
+  bi += snprintf(buffer+bi, BUFSIZE-bi, "}\n");
+  LOG0(buffer);
+
+#undef LOG0
+#undef LOG1
+#undef LOG2
+#undef LOG3
+#undef LOG4
+}
+
+void dump_image_data(const de265_image* img, int fd)
+{
+  FILE* fh;
+  if (fd==1) fh=stdout;
+  else if (fd==2) fh=stderr;
+  else { return; }
+
+#define LOG0(t) log2fh(fh, t)
+#define LOG1(t,d) log2fh(fh, t,d)
+#define LOG2(t,d1,d2) log2fh(fh, t,d1,d2)
+#define LOG3(t,d1,d2,d3) log2fh(fh, t,d1,d2,d3)
+#define LOG4(t,d1,d2,d3,d4) log2fh(fh, t,d1,d2,d3,d4)
+
+  LOG0("----------------- IMAGE -----------------\n");
+  dump_image_data_qp_distro(img, fd);
+
+#undef LOG0
+#undef LOG1
+#undef LOG2
+#undef LOG3
+#undef LOG4
+}
 
 
 void initialize_CABAC_models(thread_context* tctx)

@@ -537,6 +537,10 @@ LIBDE265_API void de265_set_parameter_int(de265_decoder_context* de265ctx, enum 
       ctx->param_slice_headers_fd = value;
       break;
 
+    case DE265_DECODER_PARAM_DUMP_IMAGE_DATA:
+      ctx->param_image_data_fd = value;
+      break;
+
     case DE265_DECODER_PARAM_ACCELERATION_CODE:
       ctx->set_acceleration_functions((enum de265_acceleration)value);
       break;

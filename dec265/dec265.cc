@@ -65,6 +65,7 @@ int quiet=0;
 bool check_hash=false;
 bool show_help=false;
 bool dump_headers=false;
+bool dump_image_data_flag=false;
 bool write_yuv=false;
 bool output_with_videogfx=false;
 bool logging=true;
@@ -91,6 +92,7 @@ static struct option long_options[] = {
   {"frames",     required_argument, 0, 'f' },
   {"output",     required_argument, 0, 'o' },
   {"dump",       no_argument,       0, 'd' },
+  {"dump-image-data", no_argument,  0, 'I' },
   {"nal",        no_argument,       0, 'n' },
   {"videogfx",   no_argument,       0, 'V' },
   {"no-logging", no_argument,       0, 'L' },
@@ -559,7 +561,7 @@ int main(int argc, char** argv)
   while (1) {
     int option_index = 0;
 
-    int c = getopt_long(argc, argv, "qt:chf:o:dLB:n0vT:m:se"
+    int c = getopt_long(argc, argv, "qt:chf:o:dILB:n0vT:m:se"
 #if HAVE_VIDEOGFX && HAVE_SDL
                         "V"
 #endif
@@ -575,6 +577,7 @@ int main(int argc, char** argv)
     case 'o': write_yuv=true; output_filename=optarg; break;
     case 'h': show_help=true; break;
     case 'd': dump_headers=true; break;
+    case 'I': dump_image_data_flag=true; break;
     case 'n': nal_input=true; break;
     case 'V': output_with_videogfx=true; break;
     case 'L': logging=false; break;
@@ -638,6 +641,9 @@ int main(int argc, char** argv)
     de265_set_parameter_int(ctx, DE265_DECODER_PARAM_DUMP_VPS_HEADERS, 1);
     de265_set_parameter_int(ctx, DE265_DECODER_PARAM_DUMP_PPS_HEADERS, 1);
     de265_set_parameter_int(ctx, DE265_DECODER_PARAM_DUMP_SLICE_HEADERS, 1);
+  }
+  if (dump_image_data_flag) {
+    de265_set_parameter_int(ctx, DE265_DECODER_PARAM_DUMP_IMAGE_DATA, 1);
   }
 
   if (no_acceleration) {

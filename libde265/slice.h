@@ -280,6 +280,9 @@ typedef struct {
 
 de265_error read_slice_segment_data(thread_context* tctx);
 
+void dump_image_data_qp_distro(const de265_image*, int fd);
+void dump_image_data(const de265_image*, int fd);
+
 bool alloc_and_init_significant_coeff_ctxIdx_lookupTable();
 void free_significant_coeff_ctxIdx_lookupTable();
 

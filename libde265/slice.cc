@@ -1541,6 +1541,8 @@ void dump_image_data_qp_distro(const de265_image* img, int fd)
         if (q < 0 || q >= 100) {
           LOG1("error: q: %d\n",q);
         } else {
+          // this output is taken in call_qcom_video_tester. Do not modify.
+          printf("qp_coord[%i,%i]: %i, CbSize: %i\n", xb, yb, q, CbSize); // XXX
           //qp_distro[q] += (CbSize*CbSize);
           qp_distro[q] += 1;
         }

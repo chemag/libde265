@@ -169,6 +169,11 @@ void dump_image(de265_image* img)
           fprintf(stderr, "error: q: %d\n",q);
         } else {
           //qp_distro[q] += (CbSize*CbSize);
+          // this output allows per block qp analisys.
+          if (verbosity) {
+            printf("qp_coord[%i,%i]: %i, CbSize: %i\n", xb, yb, q, CbSize);
+          }
+
           qp_distro[q] += 1;
         }
       }

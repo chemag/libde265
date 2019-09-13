@@ -173,7 +173,7 @@ void dump_image(de265_image* img)
           if (verbosity) {
             printf("qp_coord[%i,%i]: %i, CbSize: %i\n", xb, yb, q, CbSize);
           }
-
+          
           qp_distro[q] += 1;
         }
       }

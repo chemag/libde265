@@ -168,7 +168,12 @@ void dump_image(de265_image* img)
         if (q < 0 || q >= 100) {
           fprintf(stderr, "error: q: %d\n",q);
         } else {
+          // consider whether to normalize the QP distro by CB size
           //qp_distro[q] += (CbSize*CbSize);
+          // provide per-block QP output
+          if (verbosity) {
+            printf("qp_coord[%i,%i]: %i, CbSize: %i\n", xb, yb, q, CbSize);
+          }
           qp_distro[q] += 1;
         }
       }

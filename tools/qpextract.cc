@@ -140,17 +140,18 @@ void dump_pps(pic_parameter_set* pps)
   pps->dump(STDOUT_FILENO);
 }
 
-void dump_image(de265_image* img)
+void get_qp_distro(const de265_image* img, int* qp_distro)
 {
   const seq_parameter_set& sps = img->get_sps();
   int minCbSize = sps.MinCbSizeY;
 
-  // calculate QP distro
-  int qp_distro[100];
+  // init QP distro
   for (int q=0;q<100;q++)
     qp_distro[q] = 0;
 
+  // update QP distro
   for (int y0=0;y0<sps.PicHeightInMinCbsY;y0++)
+    {
     for (int x0=0;x0<sps.PicWidthInMinCbsY;x0++)
       {
         int log2CbSize = img->get_log2CbSize_cbUnits(x0,y0);
@@ -162,29 +163,34 @@ void dump_image(de265_image* img)
         int yb = y0*minCbSize;
 
         int CbSize = 1<<log2CbSize;
-        //printf("----qp_distro value---- x0: %i, y0: %i, xb: %i, yb: %i, log2CbSize: %i, CbSize: %i\n", x0, y0, xb, yb, log2CbSize, CbSize); // XXX
-
         int q = img->get_QPY(xb,yb);
         if (q < 0 || q >= 100) {
           fprintf(stderr, "error: q: %d\n",q);
-        } else {
-          // consider whether to normalize the QP distro by CB size
-          //qp_distro[q] += (CbSize*CbSize);
-          // provide per-block QP output
-          if (verbosity) {
-            printf("qp_coord[%i,%i]: %i, CbSize: %i\n", xb, yb, q, CbSize);
-          }
-          qp_distro[q] += 1;
+          continue;
         }
+        // consider whether to normalize the QP distro by CB size
+        //qp_distro[q] += (CbSize*CbSize);
+        // provide per-block QP output
+        qp_distro[q] += 1;
       }
+    }
+  return;
+}
+
+void dump_image(de265_image* img)
+{
+#define BUFSIZE 102400
+  char buffer[BUFSIZE] = {};
+  int bi = 0;
+
+  // calculate QP distro
+  int qp_distro[100];
+  get_qp_distro(img, qp_distro);
 
   // dump QP distro
   bool first_nonzero = false;
   int lowest_nonzero = 0;
   int highest_nonzero = 0;
-#define BUFSIZE 1024
-  char buffer[BUFSIZE] = {};
-  int bi = 0;
   for (int q=0;q<100;q++)
     {
     if (qp_distro[q] != 0 && !first_nonzero)
@@ -195,7 +201,7 @@ void dump_image(de265_image* img)
     if (qp_distro[q] != 0)
       highest_nonzero = q;
     }
-  bi += snprintf(buffer+bi, BUFSIZE-bi, "qp_distro[%i:%i] { ", lowest_nonzero, highest_nonzero);
+  bi += snprintf(buffer+bi, BUFSIZE-bi, "id: %i qp_distro[%i:%i] { ", img->get_ID(), lowest_nonzero, highest_nonzero);
   for (int q=0;q<100;q++)
     {
     if (q < lowest_nonzero || q > highest_nonzero)
@@ -203,9 +209,43 @@ void dump_image(de265_image* img)
     bi += snprintf(buffer+bi, BUFSIZE-bi, "%d ", qp_distro[q]);
     }
   bi += snprintf(buffer+bi, BUFSIZE-bi, "}\n");
+
+
+  if (!verbosity) {
+    fprintf(stdout, buffer);
+    return;
+  }
+
+  // dump all the QP values
+  const seq_parameter_set& sps = img->get_sps();
+  int minCbSize = sps.MinCbSizeY;
+
+  for (int y0=0;y0<sps.PicHeightInMinCbsY;y0++)
+    {
+    for (int x0=0;x0<sps.PicWidthInMinCbsY;x0++)
+      {
+        int log2CbSize = img->get_log2CbSize_cbUnits(x0,y0);
+        if (log2CbSize==0) {
+          continue;
+        }
+
+        int xb = x0*minCbSize;
+        int yb = y0*minCbSize;
+
+        int CbSize = 1<<log2CbSize;
+
+        int q = img->get_QPY(xb,yb);
+        if (q < 0 || q >= 100) {
+          fprintf(stderr, "error: q: %d\n",q);
+          continue;
+        }
+        // provide per-block QP output
+        bi += snprintf(buffer+bi, BUFSIZE-bi, "id: %i qp_coord[%i,%i]: %i CbSize: %i\n", img->get_ID(), xb, yb, q, CbSize);
+      }
+    }
+
   fprintf(stdout, buffer);
 }
-
 
 int main(int argc, char** argv)
 {

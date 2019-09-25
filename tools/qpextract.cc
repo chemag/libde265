@@ -179,7 +179,7 @@ void get_qp_distro(const de265_image* img, int* qp_distro)
 
 void dump_image(de265_image* img)
 {
-#define BUFSIZE 102400
+#define BUFSIZE 1024
   char buffer[BUFSIZE] = {};
   int bi = 0;
 
@@ -209,10 +209,10 @@ void dump_image(de265_image* img)
     bi += snprintf(buffer+bi, BUFSIZE-bi, "%d ", qp_distro[q]);
     }
   bi += snprintf(buffer+bi, BUFSIZE-bi, "}\n");
+  fprintf(stdout, buffer);
 
 
   if (!verbosity) {
-    fprintf(stdout, buffer);
     return;
   }
 
@@ -224,23 +224,23 @@ void dump_image(de265_image* img)
     {
     for (int x0=0;x0<sps.PicWidthInMinCbsY;x0++)
       {
-        int log2CbSize = img->get_log2CbSize_cbUnits(x0,y0);
-        if (log2CbSize==0) {
-          continue;
-        }
+      int log2CbSize = img->get_log2CbSize_cbUnits(x0,y0);
+      if (log2CbSize==0) {
+        continue;
+      }
 
-        int xb = x0*minCbSize;
-        int yb = y0*minCbSize;
+      int xb = x0*minCbSize;
+      int yb = y0*minCbSize;
 
-        int CbSize = 1<<log2CbSize;
+      int CbSize = 1<<log2CbSize;
 
-        int q = img->get_QPY(xb,yb);
-        if (q < 0 || q >= 100) {
-          fprintf(stderr, "error: q: %d\n",q);
-          continue;
-        }
-        // provide per-block QP output
-        bi += snprintf(buffer+bi, BUFSIZE-bi, "id: %i qp_coord[%i,%i]: %i CbSize: %i\n", img->get_ID(), xb, yb, q, CbSize);
+      int q = img->get_QPY(xb,yb);
+      if (q < 0 || q >= 100) {
+        fprintf(stderr, "error: q: %d\n",q);
+        continue;
+      }
+      // provide per-block QP output
+      fprintf(stdout, "id: %i qp_coord[%i,%i]: %i CbSize: %i\n", img->get_ID(), xb, yb, q, CbSize);
       }
     }
 

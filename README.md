@@ -91,11 +91,13 @@ Additional logging information can be turned on and off using these `./configure
 
 # Build
 
-If you are using MacOS, make sure you install `automake`, `cmake`, and `libtool`:
+If you are using MacOS, make sure you install `automake`, `cmake`, `libtool`, and `qt5`:
 ```
 $ brew install automake
 $ brew install cmake
 $ brew install libtool
+$ brew install qt5
+$ brew link qt5 --force
 ```
 
 Build all the binaries:

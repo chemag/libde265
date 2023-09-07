@@ -193,13 +193,22 @@ def obtain_qp_values(options, input_text):
 
 
 def evaluate_input(options, infile, outfile):
-    # parse the h265 file
-    qpextract = Runner("qpextract", path=options.qpextract_path, debug=options.debug)
-    if not qpextract.exists():
-        print("error: cannot find qpextract")
-        exit(-1)
-    ret, out, err = qpextract.call(infile)
-    if ret != 0:
+    # make sure that qpextract exists
+    if options.qpextract_path is not None:
+        qpextract_bin = options.qpextract_path
+        if not os.path.exists(qpextract_bin):
+            print("error: invalid qpextract path: {options.qpextract_path}")
+            exit(-1)
+    else:
+        # try in the current path
+        qpextract_bin = os.path.join(os.path.dirname(__file__), "qpextract")
+        if not os.path.exists(qpextract_bin):
+            print("error: cannot find qpextract binary. Use \"--qpextract <path>\" option")
+            exit(-1)
+    # run the command
+    command = f"{qpextract_bin} {infile}"
+    returncode, out, err = run(command)
+    if returncode != 0:
         print("error: qpextract failed:\n%s" % err)
         exit(-1)
 

@@ -17,17 +17,55 @@ be found at https://github.com/chemag/libde265/
 """
 
 import argparse
+import os
 import re
+import subprocess
 import sys
 
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 import numpy as np
 from matplotlib.colors import LogNorm
-from runner import Runner
 
 
 IFRAME_THRESHOLD = 0.05
+
+
+def run(command, **kwargs):
+    debug = kwargs.get("debug", 0)
+    dry_run = kwargs.get("dry_run", False)
+    env = kwargs.get("env", None)
+    stdin = subprocess.PIPE if kwargs.get("stdin", False) else None
+    bufsize = kwargs.get("bufsize", 0)
+    universal_newlines = kwargs.get("universal_newlines", False)
+    default_close_fds = True if sys.platform == "linux2" else False
+    close_fds = kwargs.get("close_fds", default_close_fds)
+    shell = type(command) in (type(""), type(""))
+    if debug > 0:
+        print("running $ %s" % command)
+    if dry_run:
+        return 0, b"stdout", b"stderr"
+    p = subprocess.Popen(  # noqa: E501
+        command,
+        stdin=stdin,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        bufsize=bufsize,
+        universal_newlines=universal_newlines,
+        env=env,
+        close_fds=close_fds,
+        shell=shell,
+    )
+    # wait for the command to terminate
+    if stdin is not None:
+        out, err = p.communicate(stdin)
+    else:
+        out, err = p.communicate()
+    returncode = p.returncode
+    # clean up
+    del p
+    # return results
+    return returncode, out, err
 
 
 def get_qp(x, y, qps):

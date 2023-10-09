@@ -57,6 +57,8 @@ bool no_acceleration=false;
 const char *bytestream_filename;
 const char* reference_filename;
 int highestTID = 100;
+int maxQP = 52;
+int minQP = 0;
 int verbosity=0;
 int disable_deblocking=0;
 int disable_sao=0;
@@ -76,6 +78,8 @@ static struct option long_options[] = {
   {"verbose",    no_argument,       0, 'v' },
   {"disable-deblocking", no_argument, &disable_deblocking, 1 },
   {"disable-sao",        no_argument, &disable_sao, 1 },
+  {"max-qp",        required_argument, 0, 'Q' },
+  {"min-qp",        required_argument, 0, 'q' },
   {0,         0,                 0,  0 }
 };
 
@@ -188,27 +192,11 @@ void dump_image(de265_image* img)
   get_qp_distro(img, qp_distro);
 
   // dump QP distro
-  bool first_nonzero = false;
-  int lowest_nonzero = 0;
-  int highest_nonzero = 0;
-  for (int q=0;q<100;q++)
-    {
-    if (qp_distro[q] != 0 && !first_nonzero)
-      {
-      first_nonzero = true;
-      lowest_nonzero = q;
-      }
-    if (qp_distro[q] != 0)
-      highest_nonzero = q;
-    }
-  bi += snprintf(buffer+bi, BUFSIZE-bi, "id: %i qp_distro[%i:%i] { ", img->get_ID(), lowest_nonzero, highest_nonzero);
-  for (int q=0;q<100;q++)
-    {
-    if (q < lowest_nonzero || q > highest_nonzero)
-      continue;
-    bi += snprintf(buffer+bi, BUFSIZE-bi, "%d ", qp_distro[q]);
-    }
-  bi += snprintf(buffer+bi, BUFSIZE-bi, "}\n");
+  bi += snprintf(buffer+bi, BUFSIZE-bi, "%i,", img->get_ID());
+  for (int qp = minQP; qp <= maxQP; qp++) {
+    bi += snprintf(buffer+bi, BUFSIZE-bi, "%i,", qp_distro[qp]);
+  }
+  buffer[bi-1] = '\n';
   fprintf(stdout, buffer);
 
 
@@ -264,6 +252,8 @@ int main(int argc, char** argv)
     case 'L': logging=false; break;
     case '0': no_acceleration=true; break;
     case 'T': highestTID=atoi(optarg); break;
+    case 'Q': maxQP=atoi(optarg); break;
+    case 'q': minQP=atoi(optarg); break;
     case 'v': verbosity++; break;
     }
   }
@@ -312,6 +302,17 @@ int main(int argc, char** argv)
 
 
   de265_set_limit_TID(ctx, highestTID);
+
+  // dump the CSV header
+#define BUFSIZE 1024
+  char buffer[BUFSIZE] = {};
+  int bi = 0;
+  bi += snprintf(buffer+bi, BUFSIZE-bi, "frame,");
+  for (int qp = minQP; qp <= maxQP; qp++) {
+    bi += snprintf(buffer+bi, BUFSIZE-bi, "%i,", qp);
+  }
+  buffer[bi-1] = '\n';
+  fprintf(stdout, buffer);
 
   // set callback
   struct de265_callback_block cb;

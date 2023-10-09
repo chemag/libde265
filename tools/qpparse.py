@@ -17,6 +17,7 @@ be found at https://github.com/chemag/libde265/
 """
 
 import argparse
+import csv
 import os
 import re
 import subprocess
@@ -165,30 +166,30 @@ def obtain_qp_values(options, input_text):
     slice_type_list = []
     min_minqp = -1
     max_maxqp = -1
-    for line in input_text.splitlines():
-        line = line.strip()
-        # skip blank lines/comments
-        if len(line) == 0 or line[0] == "#":
+    header_seen = False
+    header = []
+    for row in csv.reader(input_text.splitlines()):
+        # parse the header
+        if not header_seen:
+            header = [row[0], ] + list(int(qp) for qp in row[1:])
+            header_seen = True
             continue
-        # interesting lines include 'qp_distro' or 'slice_type'
-        if "slice_type" in line:
-            slice_type_list.append(line.split(" ")[-1])
-            continue
-        elif "qp_distro" in line:
-            # break up the line in items
-            items = re.split(r"\[|:|\]|\{|\}| ", line[line.find("qp_distro") :])
-            try:
-                minqp = int(items[1])
-                maxqp = int(items[2])
-                vals = [int(i) for i in items[3:] if i != ""]
-                assert maxqp - minqp + 1 == len(vals)
-            except:
-                print('error in line: "%s"' % line.strip())
-                continue
-            # add elements to the list
-            min_minqp = minqp if min_minqp == -1 else min(min_minqp, minqp)
-            max_maxqp = maxqp if max_maxqp == -1 else max(max_maxqp, maxqp)
-            qp_list += [[minqp, vals]]
+        # parse the CSV values
+        vals = list(int(num) for num in row)
+        # look for minqp and maxqp
+        for minqp_index in range(1, len(vals)):
+            if vals[minqp_index] != 0:
+                break
+        minqp = minqp_index - 1
+        for maxqp_index in range(len(vals) - 1, 0, -1):
+            if vals[maxqp_index] != 0:
+                break
+        maxqp = maxqp_index - 1
+        # add elements to the list
+        min_minqp = minqp if min_minqp == -1 else min(min_minqp, minqp)
+        max_maxqp = maxqp if max_maxqp == -1 else max(max_maxqp, maxqp)
+        qp_list += [[minqp, vals[minqp_index:maxqp_index + 1]]]
+
     return qp_list, slice_type_list, min_minqp, max_maxqp
 
 

@@ -320,6 +320,10 @@ int main(int argc, char** argv)
   cb.get_vps = dump_vps;
   cb.get_sps = dump_sps;
   cb.get_pps = dump_pps;
+#else
+  cb.get_vps = NULL;
+  cb.get_sps = NULL;
+  cb.get_pps = NULL;
 #endif
   cb.get_image = dump_image;
   de265_callback_register(ctx, &cb);

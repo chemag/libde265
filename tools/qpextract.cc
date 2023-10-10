@@ -167,15 +167,15 @@ void get_qp_distro(const de265_image* img, int* qp_distro)
         int yb = y0*minCbSize;
 
         int CbSize = 1<<log2CbSize;
-        int q = img->get_QPY(xb,yb);
-        if (q < 0 || q >= 100) {
-          fprintf(stderr, "error: q: %d\n",q);
+        int qp = img->get_QPY(xb,yb);
+        if (qp < 0 || qp >= 100) {
+          fprintf(stderr, "error: qp: %d\n",qp);
           continue;
         }
-        // consider whether to normalize the QP distro by CB size
-        //qp_distro[q] += (CbSize*CbSize);
+        // TODO(chema): normalize the QP distro by CB size
+        //qp_distro[qp] += (CbSize*CbSize);
         // provide per-block QP output
-        qp_distro[q] += 1;
+        qp_distro[qp] += 1;
       }
     }
   return;
@@ -198,7 +198,6 @@ void dump_image(de265_image* img)
   }
   buffer[bi-1] = '\n';
   fprintf(stdout, buffer);
-
 
   if (!verbosity) {
     return;

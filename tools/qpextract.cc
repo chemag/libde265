@@ -68,24 +68,25 @@ FILE* fin = NULL;
 FILE* fout = NULL;
 
 static struct option long_options[] = {
-    {"check-hash", no_argument, 0, 'c'},
-    {"profile", no_argument, 0, 'p'},
-    {"frames", required_argument, 0, 'f'},
-    {"infile", required_argument, 0, 'i'},
-    {"outfile", required_argument, 0, 'o'},
-    {"dump", no_argument, 0, 'd'},
-    {"dump-image-data", no_argument, 0, 'I'},
-    {"nal", no_argument, 0, 'n'},
-    {"no-logging", no_argument, 0, 'L'},
-    {"help", no_argument, 0, 'h'},
-    {"noaccel", no_argument, 0, '0'},
-    {"highest-TID", required_argument, 0, 'T'},
-    {"verbose", no_argument, 0, 'v'},
+    {"check-hash", no_argument, nullptr, 'c'},
+    {"profile", no_argument, nullptr, 'p'},
+    {"frames", required_argument, nullptr, 'f'},
+    {"infile", required_argument, nullptr, 'i'},
+    {"outfile", required_argument, nullptr, 'o'},
+    {"dump", no_argument, nullptr, 'd'},
+    {"dump-image-data", no_argument, nullptr, 'I'},
+    {"nal", no_argument, nullptr, 'n'},
+    {"no-logging", no_argument, nullptr, 'L'},
+    {"help", no_argument, nullptr, 'h'},
+    {"noaccel", no_argument, nullptr, '0'},
+    {"highest-TID", required_argument, nullptr, 'T'},
+    {"verbose", no_argument, nullptr, 'v'},
     {"disable-deblocking", no_argument, &disable_deblocking, 1},
     {"disable-sao", no_argument, &disable_sao, 1},
-    {"max-qp", required_argument, 0, 'Q'},
-    {"min-qp", required_argument, 0, 'q'},
-    {0, 0, 0, 0}};
+    {"max-qp", required_argument, nullptr, 'Q'},
+    {"min-qp", required_argument, nullptr, 'q'},
+    {0, 0, 0, 0},
+};
 
 static int width, height;
 static uint32_t framecnt = 0;
@@ -217,12 +218,37 @@ void dump_image(de265_image* img) {
   fprintf(fout, buffer);
 }
 
+void usage(char* argv0) {
+  fprintf(stderr, "# qpextract  v%s\n", de265_get_version());
+  fprintf(stderr, "usage: %s [options] -i videofile.bin [-o output.csv]\n",
+          argv0);
+  fprintf(stderr,
+          "The video file must be a raw bitstream, or a stream with NAL "
+          "units (option -n).\n");
+  fprintf(stderr, "\n");
+  fprintf(stderr, "options:\n");
+  fprintf(stderr, "  -c, --check-hash  perform hash check\n");
+  fprintf(stderr,
+          "  -n, --nal         input is a stream with 4-byte length prefixed "
+          "NAL units\n");
+  fprintf(stderr, "  -d, --dump        dump headers\n");
+  fprintf(stderr,
+          "  -T, --highest-TID select highest temporal sublayer to decode\n");
+  fprintf(stderr, "      --disable-deblocking   disable deblocking filter\n");
+  fprintf(
+      stderr,
+      "      --disable-sao          disable sample-adaptive offset filter\n");
+  fprintf(stderr, "  -h, --help        show help\n");
+}
+
 int main(int argc, char** argv) {
+  char* endptr;
+
   while (1) {
     int option_index = 0;
 
-    int c = getopt_long(argc, argv, "qt:chf:i:o:dILB:n0vT:m:se", long_options,
-                        &option_index);
+    int c = getopt_long(argc, argv, "t:chfq:Q:i:o:dILB:n0vT:m:se",
+                        long_options, &option_index);
     if (c == -1) break;
 
     switch (c) {
@@ -242,13 +268,25 @@ int main(int argc, char** argv) {
         no_acceleration = true;
         break;
       case 'T':
-        highestTID = atoi(optarg);
+        highestTID = strtol(optarg, &endptr, 0);
+        if (*endptr != '\0') {
+          usage(argv[0]);
+          exit(-1);
+        }
         break;
       case 'Q':
-        maxQP = atoi(optarg);
+        maxQP = strtol(optarg, &endptr, 0);
+        if (*endptr != '\0') {
+          usage(argv[0]);
+          exit(-1);
+        }
         break;
       case 'q':
-        minQP = atoi(optarg);
+        minQP = strtol(optarg, &endptr, 0);
+        if (*endptr != '\0') {
+          usage(argv[0]);
+          exit(-1);
+        }
         break;
       case 'v':
         verbosity++;
@@ -263,27 +301,7 @@ int main(int argc, char** argv) {
   }
 
   if (show_help) {
-    fprintf(stderr, "# qpextract  v%s\n", de265_get_version());
-    fprintf(stderr,
-            "usage: qpextract [options] -i videofile.bin [-o output.csv]\n");
-    fprintf(stderr,
-            "The video file must be a raw bitstream, or a stream with NAL "
-            "units (option -n).\n");
-    fprintf(stderr, "\n");
-    fprintf(stderr, "options:\n");
-    fprintf(stderr, "  -c, --check-hash  perform hash check\n");
-    fprintf(stderr,
-            "  -n, --nal         input is a stream with 4-byte length prefixed "
-            "NAL units\n");
-    fprintf(stderr, "  -d, --dump        dump headers\n");
-    fprintf(stderr,
-            "  -T, --highest-TID select highest temporal sublayer to decode\n");
-    fprintf(stderr, "      --disable-deblocking   disable deblocking filter\n");
-    fprintf(
-        stderr,
-        "      --disable-sao          disable sample-adaptive offset filter\n");
-    fprintf(stderr, "  -h, --help        show help\n");
-
+    usage(argv[0]);
     exit(show_help ? 0 : 5);
   }
 

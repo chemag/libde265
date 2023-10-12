@@ -62,12 +62,17 @@ int minQP = 0;
 int verbosity=0;
 int disable_deblocking=0;
 int disable_sao=0;
+char* infile = NULL;
+char* outfile = NULL;
+FILE* fin = NULL;
+FILE* fout = NULL;
 
 static struct option long_options[] = {
   {"check-hash", no_argument,       0, 'c' },
   {"profile",    no_argument,       0, 'p' },
   {"frames",     required_argument, 0, 'f' },
-  {"output",     required_argument, 0, 'o' },
+  {"infile",     required_argument, 0, 'i' },
+  {"outfile",     required_argument, 0, 'o' },
   {"dump",       no_argument,       0, 'd' },
   {"dump-image-data", no_argument,  0, 'I' },
   {"nal",        no_argument,       0, 'n' },
@@ -197,7 +202,7 @@ void dump_image(de265_image* img)
     bi += snprintf(buffer+bi, BUFSIZE-bi, "%i,", qp_distro[qp]);
   }
   buffer[bi-1] = '\n';
-  fprintf(stdout, buffer);
+  fprintf(fout, buffer);
 
   if (!verbosity) {
     return;
@@ -227,11 +232,11 @@ void dump_image(de265_image* img)
         continue;
       }
       // provide per-block QP output
-      fprintf(stdout, "id: %i qp_coord[%i,%i]: %i CbSize: %i\n", img->get_ID(), xb, yb, q, CbSize);
+      fprintf(stderr, "id: %i qp_coord[%i,%i]: %i CbSize: %i\n", img->get_ID(), xb, yb, q, CbSize);
       }
     }
 
-  fprintf(stdout, buffer);
+  fprintf(fout, buffer);
 }
 
 int main(int argc, char** argv)
@@ -239,7 +244,7 @@ int main(int argc, char** argv)
   while (1) {
     int option_index = 0;
 
-    int c = getopt_long(argc, argv, "qt:chf:o:dILB:n0vT:m:se"
+    int c = getopt_long(argc, argv, "qt:chf:i:o:dILB:n0vT:m:se"
                         , long_options, &option_index);
     if (c == -1)
       break;
@@ -254,13 +259,14 @@ int main(int argc, char** argv)
     case 'Q': maxQP=atoi(optarg); break;
     case 'q': minQP=atoi(optarg); break;
     case 'v': verbosity++; break;
+    case 'i': infile=optarg; break;
+    case 'o': outfile=optarg; break;
     }
   }
 
-  if (optind != argc-1 || show_help) {
-    fprintf(stderr," qpextract  v%s\n", de265_get_version());
-    fprintf(stderr,"--------------\n");
-    fprintf(stderr,"usage: qpextract [options] videofile.bin\n");
+  if (show_help) {
+    fprintf(stderr,"# qpextract  v%s\n", de265_get_version());
+    fprintf(stderr,"usage: qpextract [options] -i videofile.bin [-o output.csv]\n");
     fprintf(stderr,"The video file must be a raw bitstream, or a stream with NAL units (option -n).\n");
     fprintf(stderr,"\n");
     fprintf(stderr,"options:\n");
@@ -302,17 +308,6 @@ int main(int argc, char** argv)
 
   de265_set_limit_TID(ctx, highestTID);
 
-  // dump the CSV header
-#define BUFSIZE 1024
-  char buffer[BUFSIZE] = {};
-  int bi = 0;
-  bi += snprintf(buffer+bi, BUFSIZE-bi, "frame,");
-  for (int qp = minQP; qp <= maxQP; qp++) {
-    bi += snprintf(buffer+bi, BUFSIZE-bi, "%i,", qp);
-  }
-  buffer[bi-1] = '\n';
-  fprintf(stdout, buffer);
-
   // set callback
   struct de265_callback_block cb;
 #if 0
@@ -327,11 +322,40 @@ int main(int argc, char** argv)
   cb.get_image = dump_image;
   de265_callback_register(ctx, &cb);
 
-  FILE* fh = fopen(argv[optind], "rb");
-  if (fh==NULL) {
-    fprintf(stderr,"cannot open file %s!\n", argv[1]);
-    exit(10);
+  // get a valid input file pointer
+  if (infile == NULL or strncmp("-", infile, 1) == 0) {
+    fin = stdin;
+  } else {
+    // open the input file
+    fin = fopen(infile, "rb");
+    if (fin==NULL) {
+      fprintf(stderr,"cannot open file %s!\n", infile);
+      exit(10);
+    }
   }
+
+  // get a valid output file pointer
+  if (outfile == NULL or strncmp("-", outfile, 1) == 0) {
+    fout = stdout;
+  } else {
+    // open the output file
+    fout = fopen(outfile, "wb");
+    if (fout==NULL) {
+      fprintf(stderr,"cannot open file %s!\n", outfile);
+      exit(10);
+    }
+  }
+
+  // dump the CSV header
+#define BUFSIZE 1024
+  char buffer[BUFSIZE] = {};
+  int bi = 0;
+  bi += snprintf(buffer+bi, BUFSIZE-bi, "frame,");
+  for (int qp = minQP; qp <= maxQP; qp++) {
+    bi += snprintf(buffer+bi, BUFSIZE-bi, "%i,", qp);
+  }
+  buffer[bi-1] = '\n';
+  fprintf(fout, buffer);
 
   bool stop=false;
 
@@ -341,11 +365,11 @@ int main(int argc, char** argv)
     {
       if (nal_input) {
         uint8_t len[4];
-        int n = fread(len,1,4,fh);
+        int n = fread(len,1,4,fin);
         int length = (len[0]<<24) + (len[1]<<16) + (len[2]<<8) + len[3];
 
         uint8_t* buf = (uint8_t*)malloc(length);
-        n = fread(buf,1,length,fh);
+        n = fread(buf,1,length,fin);
         err = de265_push_NAL(ctx, buf,n,  pos, (void*)1);
         free(buf);
         pos+=n;
@@ -353,7 +377,7 @@ int main(int argc, char** argv)
       else {
         // read a chunk of input data
         uint8_t buf[BUFFER_SIZE];
-        int n = fread(buf,1,BUFFER_SIZE,fh);
+        int n = fread(buf,1,BUFFER_SIZE,fin);
 
         // decode input data
         if (n) {
@@ -366,7 +390,7 @@ int main(int argc, char** argv)
         pos+=n;
       }
 
-      if (feof(fh)) {
+      if (feof(fin)) {
         err = de265_flush_data(ctx); // indicate end of stream
         stop = true;
       }
@@ -399,7 +423,9 @@ int main(int argc, char** argv)
         }
     }
 
-  fclose(fh);
+  // clean up file pointers
+  fclose(fin);
+  fclose(fout);
 
   de265_free_decoder(ctx);
 

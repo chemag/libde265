@@ -59,6 +59,7 @@ const char* reference_filename;
 int highestTID = 100;
 int maxQP = 52;
 int minQP = 0;
+bool weighted_qp = false;
 int verbosity = 0;
 int disable_deblocking = 0;
 int disable_sao = 0;
@@ -70,6 +71,7 @@ FILE* fout = NULL;
 static struct option long_options[] = {
     {"check-hash", no_argument, nullptr, 'c'},
     {"profile", no_argument, nullptr, 'p'},
+    {"weighted-qp", no_argument, nullptr, 'w'},
     {"frames", required_argument, nullptr, 'f'},
     {"infile", required_argument, nullptr, 'i'},
     {"outfile", required_argument, nullptr, 'o'},
@@ -134,7 +136,7 @@ void dump_sps(seq_parameter_set* sps) { sps->dump(STDOUT_FILENO); }
 
 void dump_pps(pic_parameter_set* pps) { pps->dump(STDOUT_FILENO); }
 
-void get_qp_distro(const de265_image* img, int* qp_distro) {
+void get_qp_distro(const de265_image* img, int* qp_distro, bool weighted_qp) {
   const seq_parameter_set& sps = img->get_sps();
   int minCbSize = sps.MinCbSizeY;
 
@@ -158,10 +160,10 @@ void get_qp_distro(const de265_image* img, int* qp_distro) {
         fprintf(stderr, "error: qp: %d\n", qp);
         continue;
       }
-      // TODO(chema): normalize the QP distro by CB size
+      // normalize the QP distro by CB size
       // qp_distro[qp] += (CbSize*CbSize);
       // provide per-block QP output
-      qp_distro[qp] += 1;
+      qp_distro[qp] += (!weighted_qp) ? 1 : (CbSize * CbSize);
     }
   }
   return;
@@ -174,7 +176,7 @@ void dump_image(de265_image* img) {
 
   // calculate QP distro
   int qp_distro[100];
-  get_qp_distro(img, qp_distro);
+  get_qp_distro(img, qp_distro, weighted_qp);
 
   // dump QP distro
   bi += snprintf(buffer + bi, BUFSIZE - bi, "%i,", img->get_ID());
@@ -238,6 +240,9 @@ void usage(char* argv0) {
   fprintf(
       stderr,
       "      --disable-sao          disable sample-adaptive offset filter\n");
+  fprintf(stderr, "  -q, --min-qp      minimum QP for CSV dump\n");
+  fprintf(stderr, "  -Q, --max-qp      maximum QP for CSV dump\n");
+  fprintf(stderr, "  -w, --weighted    weighted mode (multiply each QP times the number of pixels)\n");
   fprintf(stderr, "  -h, --help        show help\n");
 }
 
@@ -247,7 +252,7 @@ int main(int argc, char** argv) {
   while (1) {
     int option_index = 0;
 
-    int c = getopt_long(argc, argv, "t:chfq:Q:i:o:dILB:n0vT:m:se",
+    int c = getopt_long(argc, argv, "t:chfq:Q:i:o:dILB:n0vT:m:sew",
                         long_options, &option_index);
     if (c == -1) break;
 
@@ -290,6 +295,9 @@ int main(int argc, char** argv) {
         break;
       case 'v':
         verbosity++;
+        break;
+      case 'w':
+        weighted_qp = true;
         break;
       case 'i':
         infile = optarg;

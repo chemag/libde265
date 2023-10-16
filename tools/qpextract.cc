@@ -31,6 +31,7 @@
 #include "config.h"
 #endif
 #include <getopt.h>
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -178,8 +179,34 @@ void dump_image(de265_image* img) {
   int qp_distro[100];
   get_qp_distro(img, qp_distro, weighted_qp);
 
-  // dump QP distro
+  // dump frame number
   bi += snprintf(buffer + bi, BUFSIZE - bi, "%i,", img->get_ID());
+
+  // dump QP statistics
+  int qp_max = -1;
+  int qp_min = -1;
+  int qp_sum = 0;
+  int qp_num = 0;
+  for (int qp = minQP; qp <= maxQP; qp++) {
+    if (qp_max == -1 || (qp_distro[qp] > 0 && qp > qp_max)) {
+        qp_max = qp;
+    }
+    if (qp_min == -1 || (qp_distro[qp] > 0 && qp < qp_min)) {
+        qp_min = qp;
+    }
+    qp_sum += qp * qp_distro[qp];
+    qp_num += qp_distro[qp];
+  }
+  double qp_avg = (double)qp_sum / qp_num;
+  double qp_sumsquare = 0;
+  for (int qp = minQP; qp <= maxQP; qp++) {
+    double diff = qp - qp_avg;
+    qp_sumsquare += (diff) * (diff) * qp_distro[qp];
+  }
+  double qp_stddev = sqrt(qp_sumsquare / qp_num);
+  bi += snprintf(buffer + bi, BUFSIZE - bi, "%i,%i,%i,%f,%f,", qp_num, qp_min, qp_max, qp_avg, qp_stddev);
+
+  // dump QP distro
   for (int qp = minQP; qp <= maxQP; qp++) {
     bi += snprintf(buffer + bi, BUFSIZE - bi, "%i,", qp_distro[qp]);
   }
@@ -384,7 +411,7 @@ int main(int argc, char** argv) {
 #define BUFSIZE 1024
   char buffer[BUFSIZE] = {};
   int bi = 0;
-  bi += snprintf(buffer + bi, BUFSIZE - bi, "frame,");
+  bi += snprintf(buffer + bi, BUFSIZE - bi, "frame,qp_num,qp_min,qp_max,qp_avg,qp_stddev,");
   for (int qp = minQP; qp <= maxQP; qp++) {
     bi += snprintf(buffer + bi, BUFSIZE - bi, "%i,", qp);
   }

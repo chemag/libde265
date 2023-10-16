@@ -188,10 +188,10 @@ void dump_image(de265_image* img) {
   int qp_sum = 0;
   int qp_num = 0;
   for (int qp = minQP; qp <= maxQP; qp++) {
-    if (qp_max == -1 || (qp_distro[qp] > 0 && qp > qp_max)) {
+    if ((qp_distro[qp] > 0) && (qp_max == -1 || qp > qp_max)) {
         qp_max = qp;
     }
-    if (qp_min == -1 || (qp_distro[qp] > 0 && qp < qp_min)) {
+    if ((qp_distro[qp] > 0) && (qp_min == -1 || qp < qp_min)) {
         qp_min = qp;
     }
     qp_sum += qp * qp_distro[qp];

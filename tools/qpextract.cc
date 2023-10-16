@@ -50,6 +50,8 @@
 
 #define BUFFER_SIZE 40960
 
+enum Procmode { qpmode, predmode };
+
 bool nal_input = false;
 bool check_hash = false;
 bool show_help = false;
@@ -60,7 +62,8 @@ const char* reference_filename;
 int highestTID = 100;
 int maxQP = 52;
 int minQP = 0;
-bool weighted_qp = false;
+Procmode procmode = qpmode;
+bool weighted = false;
 int verbosity = 0;
 int disable_deblocking = 0;
 int disable_sao = 0;
@@ -71,8 +74,8 @@ FILE* fout = NULL;
 
 static struct option long_options[] = {
     {"check-hash", no_argument, nullptr, 'c'},
-    {"profile", no_argument, nullptr, 'p'},
-    {"weighted-qp", no_argument, nullptr, 'w'},
+    {"weighted", no_argument, nullptr, 'w'},
+    {"predmode", no_argument, nullptr, 'p'},
     {"frames", required_argument, nullptr, 'f'},
     {"infile", required_argument, nullptr, 'i'},
     {"outfile", required_argument, nullptr, 'o'},
@@ -137,7 +140,7 @@ void dump_sps(seq_parameter_set* sps) { sps->dump(STDOUT_FILENO); }
 
 void dump_pps(pic_parameter_set* pps) { pps->dump(STDOUT_FILENO); }
 
-void get_qp_distro(const de265_image* img, int* qp_distro, bool weighted_qp) {
+void get_qp_distro(const de265_image* img, int* qp_distro, bool weighted) {
   const seq_parameter_set& sps = img->get_sps();
   int minCbSize = sps.MinCbSizeY;
 
@@ -164,20 +167,53 @@ void get_qp_distro(const de265_image* img, int* qp_distro, bool weighted_qp) {
       // normalize the QP distro by CB size
       // qp_distro[qp] += (CbSize*CbSize);
       // provide per-block QP output
-      qp_distro[qp] += (!weighted_qp) ? 1 : (CbSize * CbSize);
+      qp_distro[qp] += (!weighted) ? 1 : (CbSize * CbSize);
     }
   }
   return;
 }
 
-void dump_image(de265_image* img) {
+void get_pred_distro(const de265_image* img, int* pred_distro, bool weighted) {
+  const seq_parameter_set& sps = img->get_sps();
+  int minCbSize = sps.MinCbSizeY;
+
+  // init pred distro
+  for (int pred_mode = 0; pred_mode < 100; pred_mode++) pred_distro[pred_mode] = 0;
+
+  // update PredMode distro
+  for (int y0 = 0; y0 < sps.PicHeightInMinCbsY; y0++) {
+    for (int x0 = 0; x0 < sps.PicWidthInMinCbsY; x0++) {
+      int log2CbSize = img->get_log2CbSize_cbUnits(x0, y0);
+      if (log2CbSize == 0) {
+        continue;
+      }
+
+      int xb = x0 * minCbSize;
+      int yb = y0 * minCbSize;
+
+      int CbSize = 1 << log2CbSize;
+      enum PredMode pred_mode = img->get_pred_mode(xb, yb);
+      if (pred_mode < 0 || pred_mode > 2) {
+        fprintf(stderr, "error: pred_mode: %d\n", pred_mode);
+        continue;
+      }
+      // normalize the PredMode distro by CB size
+      // pred_distro[pred_mode] += (CbSize*CbSize);
+      // provide per-block PredMode output
+      pred_distro[pred_mode] += (!weighted) ? 1 : (CbSize * CbSize);
+    }
+  }
+  return;
+}
+
+void dump_image_qp(de265_image* img) {
 #define BUFSIZE 1024
   char buffer[BUFSIZE] = {};
   int bi = 0;
 
   // calculate QP distro
   int qp_distro[100];
-  get_qp_distro(img, qp_distro, weighted_qp);
+  get_qp_distro(img, qp_distro, weighted);
 
   // dump frame number
   bi += snprintf(buffer + bi, BUFSIZE - bi, "%i,", img->get_ID());
@@ -247,6 +283,43 @@ void dump_image(de265_image* img) {
   fprintf(fout, buffer);
 }
 
+void dump_image_pred(de265_image* img) {
+#define BUFSIZE 1024
+  char buffer[BUFSIZE] = {};
+  int bi = 0;
+
+  // calculate pred distro
+  int pred_distro[3] = { 0 };
+  get_pred_distro(img, pred_distro, weighted);
+
+  // dump frame number
+  bi += snprintf(buffer + bi, BUFSIZE - bi, "%i,", img->get_ID());
+
+  // dump PredMode distro
+  int sum = 0;
+  for (int pred_mode = 0; pred_mode < 3; pred_mode++) {
+    bi += snprintf(buffer + bi, BUFSIZE - bi, "%i,", pred_distro[pred_mode]);
+    sum += pred_distro[pred_mode];
+  }
+
+  // dump PredMode ratio
+  for (int pred_mode = 0; pred_mode < 3; pred_mode++) {
+    double ratio = (double)pred_distro[pred_mode] / sum;
+    bi += snprintf(buffer + bi, BUFSIZE - bi, "%f,", ratio);
+  }
+
+  buffer[bi - 1] = '\n';
+  fprintf(fout, buffer);
+}
+
+void dump_image(de265_image* img) {
+  if (procmode == qpmode) {
+    dump_image_qp(img);
+  } else if (procmode == predmode) {
+    dump_image_pred(img);
+  }
+}
+
 void usage(char* argv0) {
   fprintf(stderr, "# qpextract  v%s\n", de265_get_version());
   fprintf(stderr, "usage: %s [options] -i videofile.bin [-o output.csv]\n",
@@ -270,6 +343,7 @@ void usage(char* argv0) {
   fprintf(stderr, "  -q, --min-qp      minimum QP for CSV dump\n");
   fprintf(stderr, "  -Q, --max-qp      maximum QP for CSV dump\n");
   fprintf(stderr, "  -w, --weighted    weighted mode (multiply each QP times the number of pixels)\n");
+  fprintf(stderr, "  -p, --predmode    pred mode (multiply each QP times the number of pixels)\n");
   fprintf(stderr, "  -h, --help        show help\n");
 }
 
@@ -279,7 +353,7 @@ int main(int argc, char** argv) {
   while (1) {
     int option_index = 0;
 
-    int c = getopt_long(argc, argv, "t:chfq:Q:i:o:dILB:n0vT:m:sew",
+    int c = getopt_long(argc, argv, "t:chfpq:Q:i:o:dILB:n0vT:m:sew",
                         long_options, &option_index);
     if (c == -1) break;
 
@@ -295,6 +369,9 @@ int main(int argc, char** argv) {
         break;
       case 'L':
         logging = false;
+        break;
+      case 'p':
+        procmode = predmode;
         break;
       case '0':
         no_acceleration = true;
@@ -324,7 +401,7 @@ int main(int argc, char** argv) {
         verbosity++;
         break;
       case 'w':
-        weighted_qp = true;
+        weighted = true;
         break;
       case 'i':
         infile = optarg;
@@ -411,9 +488,13 @@ int main(int argc, char** argv) {
 #define BUFSIZE 1024
   char buffer[BUFSIZE] = {};
   int bi = 0;
-  bi += snprintf(buffer + bi, BUFSIZE - bi, "frame,qp_num,qp_min,qp_max,qp_avg,qp_stddev,");
-  for (int qp = minQP; qp <= maxQP; qp++) {
-    bi += snprintf(buffer + bi, BUFSIZE - bi, "%i,", qp);
+  if (procmode == qpmode) {
+      bi += snprintf(buffer + bi, BUFSIZE - bi, "frame,qp_num,qp_min,qp_max,qp_avg,qp_stddev,");
+      for (int qp = minQP; qp <= maxQP; qp++) {
+        bi += snprintf(buffer + bi, BUFSIZE - bi, "%i,", qp);
+      }
+  } else if (procmode == predmode) {
+      bi += snprintf(buffer + bi, BUFSIZE - bi, "frame,intra,inter,skip,intra_ratio,inter_ratio,skip_ratio,");
   }
   buffer[bi - 1] = '\n';
   fprintf(fout, buffer);

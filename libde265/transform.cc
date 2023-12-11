@@ -199,6 +199,8 @@ void decode_quantization_parameters(thread_context* tctx, int xC,int yC,
 
   tctx->img->set_QPY(xCUBase, yCUBase, log2CbSize, QPY);
   tctx->currentQPY = QPY;
+  tctx->img->set_QPCb(xCUBase, yCUBase, log2CbSize, qPCb + sps.QpBdOffset_C);
+  tctx->img->set_QPCr(xCUBase, yCUBase, log2CbSize, qPCr + sps.QpBdOffset_C);
 
   /*
   printf("SET QPY POC=%d %d;%d-%d;%d = %d\n",ctx->img->PicOrderCntVal,xCUBase,yCUBase,

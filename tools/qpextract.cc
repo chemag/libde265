@@ -78,6 +78,7 @@ FILE* fout = NULL;
 enum {
   DISABLE_DEBLOCKING_OPTION = CHAR_MAX + 1,
   DISABLE_SAO_OPTION,
+  QPYMODE_OPTION,
 };
 
 
@@ -98,6 +99,7 @@ static struct option long_options[] = {
     {"verbose", no_argument, nullptr, 'v'},
     {"disable-deblocking", no_argument, &disable_deblocking, DISABLE_DEBLOCKING_OPTION},
     {"disable-sao", no_argument, &disable_sao, DISABLE_SAO_OPTION},
+    {"qpymode", no_argument, nullptr, QPYMODE_OPTION},
     {"max-qp", required_argument, nullptr, 'Q'},
     {"min-qp", required_argument, nullptr, 'q'},
     {0, 0, 0, 0},
@@ -352,6 +354,7 @@ void usage(char* argv0) {
   fprintf(stderr, "  -q, --min-qp      minimum QP for CSV dump\n");
   fprintf(stderr, "  -Q, --max-qp      maximum QP for CSV dump\n");
   fprintf(stderr, "  -w, --weighted    weighted mode (multiply each QP times the number of pixels)\n");
+  fprintf(stderr, "  --qpymode         QPY mode (get the distribution of QP Y values)\n");
   fprintf(stderr, "  -p, --predmode    pred mode (get the distribution of prediction modes)\n");
   fprintf(stderr, "  -h, --help        show help\n");
 }
@@ -434,6 +437,9 @@ int main(int argc, char** argv) {
         break;
       case DISABLE_SAO_OPTION:
         disable_sao = 1;
+        break;
+      case QPYMODE_OPTION:
+        procmode = qpymode;
         break;
     }
   }

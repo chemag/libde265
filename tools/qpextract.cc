@@ -51,7 +51,7 @@
 
 #define BUFFER_SIZE 40960
 
-enum Procmode { qpmode, predmode };
+enum Procmode { qpymode, qpcbmode, qpcrmode, predmode };
 
 bool nal_input = false;
 bool check_hash = false;
@@ -63,7 +63,7 @@ const char* reference_filename;
 int highestTID = 100;
 int maxQP = 52;
 int minQP = 0;
-Procmode procmode = qpmode;
+Procmode procmode = qpymode;
 bool weighted = false;
 int verbosity = 0;
 int disable_deblocking = 0;
@@ -79,6 +79,8 @@ enum {
   DISABLE_DEBLOCKING_OPTION = CHAR_MAX + 1,
   DISABLE_SAO_OPTION,
   QPYMODE_OPTION,
+  QPCBMODE_OPTION,
+  QPCRMODE_OPTION,
 };
 
 
@@ -100,6 +102,8 @@ static struct option long_options[] = {
     {"disable-deblocking", no_argument, &disable_deblocking, DISABLE_DEBLOCKING_OPTION},
     {"disable-sao", no_argument, &disable_sao, DISABLE_SAO_OPTION},
     {"qpymode", no_argument, nullptr, QPYMODE_OPTION},
+    {"qpcbmode", no_argument, nullptr, QPCBMODE_OPTION},
+    {"qpcrmode", no_argument, nullptr, QPCRMODE_OPTION},
     {"max-qp", required_argument, nullptr, 'Q'},
     {"min-qp", required_argument, nullptr, 'q'},
     {0, 0, 0, 0},
@@ -151,7 +155,7 @@ void dump_sps(seq_parameter_set* sps) { sps->dump(STDOUT_FILENO); }
 
 void dump_pps(pic_parameter_set* pps) { pps->dump(STDOUT_FILENO); }
 
-void get_qp_distro(const de265_image* img, int* qp_distro, bool weighted) {
+void get_qp_distro(const de265_image* img, int* qp_distro, bool weighted, Procmode procmode) {
   const seq_parameter_set& sps = img->get_sps();
   int minCbSize = sps.MinCbSizeY;
 
@@ -170,7 +174,14 @@ void get_qp_distro(const de265_image* img, int* qp_distro, bool weighted) {
       int yb = y0 * minCbSize;
 
       int CbSize = 1 << log2CbSize;
-      int qp = img->get_QPY(xb, yb);
+      int qp = -1;
+      if (procmode == qpymode) {
+        qp = img->get_QPY(xb, yb);
+      } else if (procmode == qpcbmode) {
+        qp = img->get_QPCb(xb, yb);
+      } else if (procmode == qpcrmode) {
+        qp = img->get_QPCr(xb, yb);
+      }
       if (qp < 0 || qp >= 100) {
         fprintf(stderr, "error: qp: %d\n", qp);
         continue;
@@ -217,14 +228,14 @@ void get_pred_distro(const de265_image* img, int* pred_distro, bool weighted) {
   return;
 }
 
-void dump_image_qp(de265_image* img) {
+void dump_image_qp(de265_image* img, Procmode procmode) {
 #define BUFSIZE 1024
   char buffer[BUFSIZE] = {};
   int bi = 0;
 
   // calculate QP distro
   int qp_distro[100];
-  get_qp_distro(img, qp_distro, weighted);
+  get_qp_distro(img, qp_distro, weighted, procmode);
 
   // dump frame number
   bi += snprintf(buffer + bi, BUFSIZE - bi, "%i,", img->get_ID());
@@ -324,8 +335,8 @@ void dump_image_pred(de265_image* img) {
 }
 
 void dump_image(de265_image* img) {
-  if (procmode == qpmode) {
-    dump_image_qp(img);
+  if ((procmode == qpymode) || (procmode == qpcbmode) || (procmode == qpcrmode)) {
+    dump_image_qp(img, procmode);
   } else if (procmode == predmode) {
     dump_image_pred(img);
   }
@@ -355,6 +366,8 @@ void usage(char* argv0) {
   fprintf(stderr, "  -Q, --max-qp      maximum QP for CSV dump\n");
   fprintf(stderr, "  -w, --weighted    weighted mode (multiply each QP times the number of pixels)\n");
   fprintf(stderr, "  --qpymode         QPY mode (get the distribution of QP Y values)\n");
+  fprintf(stderr, "  --qpcbmode        QPCb mode (get the distribution of QP Cb values)\n");
+  fprintf(stderr, "  --qpcrmode        QPCr mode (get the distribution of QP Cr values)\n");
   fprintf(stderr, "  -p, --predmode    pred mode (get the distribution of prediction modes)\n");
   fprintf(stderr, "  -h, --help        show help\n");
 }
@@ -441,6 +454,12 @@ int main(int argc, char** argv) {
       case QPYMODE_OPTION:
         procmode = qpymode;
         break;
+      case QPCBMODE_OPTION:
+        procmode = qpcbmode;
+        break;
+      case QPCRMODE_OPTION:
+        procmode = qpcrmode;
+        break;
     }
   }
 
@@ -520,7 +539,7 @@ int main(int argc, char** argv) {
 #define BUFSIZE 1024
   char buffer[BUFSIZE] = {};
   int bi = 0;
-  if (procmode == qpmode) {
+  if ((procmode == qpymode) || (procmode == qpcbmode) || (procmode == qpcrmode)) {
       bi += snprintf(buffer + bi, BUFSIZE - bi, "frame,qp_num,qp_min,qp_max,qp_avg,qp_stddev,");
       for (int qp = minQP; qp <= maxQP; qp++) {
         bi += snprintf(buffer + bi, BUFSIZE - bi, "%i,", qp);

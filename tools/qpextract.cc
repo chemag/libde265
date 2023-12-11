@@ -36,6 +36,7 @@
 #include <stdlib.h>
 
 #include <limits>
+#include <climits>
 #ifdef HAVE_MALLOC_H
 #include <malloc.h>
 #endif
@@ -72,6 +73,14 @@ char* outfile = NULL;
 FILE* fin = NULL;
 FILE* fout = NULL;
 
+
+// long options with no equivalent short option
+enum {
+  DISABLE_DEBLOCKING_OPTION = CHAR_MAX + 1,
+  DISABLE_SAO_OPTION,
+};
+
+
 static struct option long_options[] = {
     {"check-hash", no_argument, nullptr, 'c'},
     {"weighted", no_argument, nullptr, 'w'},
@@ -87,8 +96,8 @@ static struct option long_options[] = {
     {"noaccel", no_argument, nullptr, '0'},
     {"highest-TID", required_argument, nullptr, 'T'},
     {"verbose", no_argument, nullptr, 'v'},
-    {"disable-deblocking", no_argument, &disable_deblocking, 1},
-    {"disable-sao", no_argument, &disable_sao, 1},
+    {"disable-deblocking", no_argument, &disable_deblocking, DISABLE_DEBLOCKING_OPTION},
+    {"disable-sao", no_argument, &disable_sao, DISABLE_SAO_OPTION},
     {"max-qp", required_argument, nullptr, 'Q'},
     {"min-qp", required_argument, nullptr, 'q'},
     {0, 0, 0, 0},
@@ -358,6 +367,17 @@ int main(int argc, char** argv) {
     if (c == -1) break;
 
     switch (c) {
+      case 0:
+        // long options that define flag
+        // if this option set a flag, do nothing else now
+        if (long_options[optind].flag != nullptr) {
+          break;
+        }
+        printf("option %s", long_options[optind].name);
+        if (optarg) {
+          printf(" with arg %s", optarg);
+        }
+        break;
       case 'c':
         check_hash = true;
         break;
@@ -408,6 +428,12 @@ int main(int argc, char** argv) {
         break;
       case 'o':
         outfile = optarg;
+        break;
+      case DISABLE_DEBLOCKING_OPTION:
+        disable_deblocking = 1;
+        break;
+      case DISABLE_SAO_OPTION:
+        disable_sao = 1;
         break;
     }
   }

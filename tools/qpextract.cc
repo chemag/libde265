@@ -343,7 +343,7 @@ void usage(char* argv0) {
   fprintf(stderr, "  -q, --min-qp      minimum QP for CSV dump\n");
   fprintf(stderr, "  -Q, --max-qp      maximum QP for CSV dump\n");
   fprintf(stderr, "  -w, --weighted    weighted mode (multiply each QP times the number of pixels)\n");
-  fprintf(stderr, "  -p, --predmode    pred mode (multiply each QP times the number of pixels)\n");
+  fprintf(stderr, "  -p, --predmode    pred mode (get the distribution of prediction modes)\n");
   fprintf(stderr, "  -h, --help        show help\n");
 }
 

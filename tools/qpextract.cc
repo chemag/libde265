@@ -540,14 +540,14 @@ int main(int argc, char** argv) {
   char buffer[BUFSIZE] = {};
   int bi = 0;
   if ((procmode == qpymode) || (procmode == qpcbmode) || (procmode == qpcrmode)) {
-      bi += snprintf(buffer + bi, BUFSIZE - bi, "frame,qp_num,qp_min,qp_max,qp_avg,qp_stddev,");
+      bi += snprintf(buffer + bi, BUFSIZE - bi, "frame,qp_num,qp_min,qp_max,qp_avg,qp_stddev");
       for (int qp = minQP; qp <= maxQP; qp++) {
-        bi += snprintf(buffer + bi, BUFSIZE - bi, "%i,", qp);
+        bi += snprintf(buffer + bi, BUFSIZE - bi, ",%i", qp);
       }
   } else if (procmode == predmode) {
-      bi += snprintf(buffer + bi, BUFSIZE - bi, "frame,intra,inter,skip,intra_ratio,inter_ratio,skip_ratio,");
+      bi += snprintf(buffer + bi, BUFSIZE - bi, "frame,intra,inter,skip,intra_ratio,inter_ratio,skip_ratio");
   }
-  buffer[bi - 1] = '\n';
+  buffer[bi] = '\n';
   fprintf(fout, buffer);
 
   bool stop = false;

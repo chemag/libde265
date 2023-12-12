@@ -51,7 +51,7 @@
 
 #define BUFFER_SIZE 40960
 
-enum Procmode { qpymode, qpcbmode, qpcrmode, predmode };
+enum Procmode { qpymode, qpcbmode, qpcrmode, predmode, ctumode };
 
 bool nal_input = false;
 bool check_hash = false;
@@ -81,6 +81,7 @@ enum {
   QPYMODE_OPTION,
   QPCBMODE_OPTION,
   QPCRMODE_OPTION,
+  CTUMODE_OPTION,
 };
 
 
@@ -104,6 +105,7 @@ static struct option long_options[] = {
     {"qpymode", no_argument, nullptr, QPYMODE_OPTION},
     {"qpcbmode", no_argument, nullptr, QPCBMODE_OPTION},
     {"qpcrmode", no_argument, nullptr, QPCRMODE_OPTION},
+    {"ctumode", no_argument, nullptr, CTUMODE_OPTION},
     {"max-qp", required_argument, nullptr, 'Q'},
     {"min-qp", required_argument, nullptr, 'q'},
     {0, 0, 0, 0},
@@ -334,11 +336,52 @@ void dump_image_pred(de265_image* img) {
   fprintf(fout, buffer);
 }
 
+void dump_ctu_info(de265_image* img) {
+#define BUFSIZE 1024
+  char buffer[BUFSIZE] = {};
+  int bi = 0;
+
+  const seq_parameter_set& sps = img->get_sps();
+  int minCbSize = sps.MinCbSizeY;
+
+  // print QP values
+  for (int y0 = 0; y0 < sps.PicHeightInMinCbsY; y0++) {
+    for (int x0 = 0; x0 < sps.PicWidthInMinCbsY; x0++) {
+      int log2CbSize = img->get_log2CbSize_cbUnits(x0, y0);
+      if (log2CbSize == 0) {
+        continue;
+      }
+      // dump frame number
+      bi = 0;
+      bi += snprintf(buffer + bi, BUFSIZE - bi, "%i,", img->get_ID());
+      // dump location
+      int xb = x0 * minCbSize;
+      int yb = y0 * minCbSize;
+      bi += snprintf(buffer + bi, BUFSIZE - bi, "%i,", xb);
+      bi += snprintf(buffer + bi, BUFSIZE - bi, "%i,", yb);
+      // dump size
+      int CbSize = 1 << log2CbSize;
+      bi += snprintf(buffer + bi, BUFSIZE - bi, "%i,", CbSize);
+      // dump qp values
+      int qpy = img->get_QPY(xb, yb);
+      int qpcb = img->get_QPCb(xb, yb);
+      int qpcr = img->get_QPCr(xb, yb);
+      bi += snprintf(buffer + bi, BUFSIZE - bi, "%i,", qpy);
+      bi += snprintf(buffer + bi, BUFSIZE - bi, "%i,", qpcb);
+      bi += snprintf(buffer + bi, BUFSIZE - bi, "%i,", qpcr);
+      buffer[bi - 1] = '\n';
+      fprintf(fout, buffer);
+    }
+  }
+}
+
 void dump_image(de265_image* img) {
   if ((procmode == qpymode) || (procmode == qpcbmode) || (procmode == qpcrmode)) {
     dump_image_qp(img, procmode);
   } else if (procmode == predmode) {
     dump_image_pred(img);
+  } else if (procmode == ctumode) {
+    dump_ctu_info(img);
   }
 }
 
@@ -460,6 +503,9 @@ int main(int argc, char** argv) {
       case QPCRMODE_OPTION:
         procmode = qpcrmode;
         break;
+      case CTUMODE_OPTION:
+        procmode = ctumode;
+        break;
     }
   }
 
@@ -546,6 +592,8 @@ int main(int argc, char** argv) {
       }
   } else if (procmode == predmode) {
       bi += snprintf(buffer + bi, BUFSIZE - bi, "frame,intra,inter,skip,intra_ratio,inter_ratio,skip_ratio");
+  } else if (procmode == ctumode) {
+      bi += snprintf(buffer + bi, BUFSIZE - bi, "frame,xb,yb,size,qpy,qpcb,qpcr");
   }
   buffer[bi] = '\n';
   fprintf(fout, buffer);

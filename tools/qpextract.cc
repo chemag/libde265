@@ -412,6 +412,7 @@ void usage(char* argv0) {
   fprintf(stderr, "  --qpcbmode        QPCb mode (get the distribution of QP Cb values)\n");
   fprintf(stderr, "  --qpcrmode        QPCr mode (get the distribution of QP Cr values)\n");
   fprintf(stderr, "  -p, --predmode    pred mode (get the distribution of prediction modes)\n");
+  fprintf(stderr, "  --ctumode         ctu mode (get the distribution of CTUs)\n");
   fprintf(stderr, "  -h, --help        show help\n");
 }
 

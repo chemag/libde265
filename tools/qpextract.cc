@@ -237,6 +237,45 @@ void get_pred_distro(const de265_image* img, int* pred_distro, bool weighted) {
   return;
 }
 
+// 8, 16, 32, 64
+#define MAX_CTU_VALUES 4
+
+// aggregate CTU values
+void get_ctu_distro(const de265_image* img, int* ctu_distro, int* ctu_distro_weighted) {
+  const seq_parameter_set& sps = img->get_sps();
+  int minCbSize = sps.MinCbSizeY;
+
+  // init CTU distros
+  for (int ctu_size = 0; ctu_size < MAX_CTU_VALUES; ctu_size++) {
+    ctu_distro[ctu_size] = 0;
+    ctu_distro_weighted[ctu_size] = 0;
+  }
+
+  // update QP distro
+  for (int y0 = 0; y0 < sps.PicHeightInMinCbsY; y0++) {
+    for (int x0 = 0; x0 < sps.PicWidthInMinCbsY; x0++) {
+      int log2CbSize = img->get_log2CbSize_cbUnits(x0, y0);
+      if (log2CbSize == 0) {
+        continue;
+      }
+
+      int xb = x0 * minCbSize;
+      int yb = y0 * minCbSize;
+      // CTU size
+      int CbSize = 1 << log2CbSize;
+      if ((CbSize != 8) && (CbSize != 16) && (CbSize != 32) && (CbSize != 64)) {
+        fprintf(stderr, "error: CbSize: %d\n", CbSize);
+        continue;
+      }
+      // provide per-block CTU size
+      ctu_distro[log2CbSize - 3] += 1;
+      // normalize the CTU distro by CB size
+      ctu_distro_weighted[log2CbSize - 3] += CbSize * CbSize;
+    }
+  }
+  return;
+}
+
 void dump_image_qp(de265_image* img, Procmode procmode) {
 #define BUFSIZE 1024
   char buffer[BUFSIZE] = {};
@@ -343,8 +382,51 @@ void dump_image_pred(de265_image* img) {
   fprintf(fout, buffer);
 }
 
-void dump_ctu_info(de265_image* img) {
+// ctumode
+void dump_ctu_distro(de265_image* img) {
 #define BUFSIZE 1024
+  char buffer[BUFSIZE] = {};
+  int bi = 0;
+
+  // calculate CTU distro
+  int ctu_distro[MAX_CTU_VALUES] = { 0 };
+  int ctu_distro_weighted[MAX_CTU_VALUES] = { 0 };
+  get_ctu_distro(img, ctu_distro, ctu_distro_weighted);
+
+  // dump frame number
+  bi += snprintf(buffer + bi, BUFSIZE - bi, "%i,", img->get_ID());
+
+  // dump CTU distro
+  int sum = 0;
+  for (int ctu_size = 0; ctu_size < MAX_CTU_VALUES; ctu_size++) {
+    bi += snprintf(buffer + bi, BUFSIZE - bi, "%i,", ctu_distro[ctu_size]);
+    sum += ctu_distro[ctu_size];
+  }
+
+  // dump CTU distro ratio
+  for (int ctu_size = 0; ctu_size < MAX_CTU_VALUES; ctu_size++) {
+    double ratio = (double)ctu_distro[ctu_size] / sum;
+    bi += snprintf(buffer + bi, BUFSIZE - bi, "%f,", ratio);
+  }
+
+  // dump CTU weighted distro
+  int sumw = 0;
+  for (int ctu_size = 0; ctu_size < MAX_CTU_VALUES; ctu_size++) {
+    bi += snprintf(buffer + bi, BUFSIZE - bi, "%i,", ctu_distro_weighted[ctu_size]);
+    sumw += ctu_distro_weighted[ctu_size];
+  }
+
+  // dump CTU weighted distro ratio
+  for (int ctu_size = 0; ctu_size < MAX_CTU_VALUES; ctu_size++) {
+    double ratio = (double)ctu_distro_weighted[ctu_size] / sumw;
+    bi += snprintf(buffer + bi, BUFSIZE - bi, "%f,", ratio);
+  }
+
+  buffer[bi - 1] = '\n';
+  fprintf(fout, buffer);
+}
+
+void dump_full(de265_image* img) {
   char buffer[BUFSIZE] = {};
   int bi = 0;
 
@@ -376,6 +458,11 @@ void dump_ctu_info(de265_image* img) {
       bi += snprintf(buffer + bi, BUFSIZE - bi, "%i,", qpy);
       bi += snprintf(buffer + bi, BUFSIZE - bi, "%i,", qpcb);
       bi += snprintf(buffer + bi, BUFSIZE - bi, "%i,", qpcr);
+      // dump pred values
+      enum PredMode pred_mode = img->get_pred_mode(xb, yb);
+      bi += snprintf(buffer + bi, BUFSIZE - bi, "%i,", pred_mode);
+      // dump CTU value
+      bi += snprintf(buffer + bi, BUFSIZE - bi, "%i,", CbSize);
       buffer[bi - 1] = '\n';
       fprintf(fout, buffer);
     }
@@ -388,7 +475,7 @@ void dump_image(de265_image* img) {
   } else if (procmode == predmode) {
     dump_image_pred(img);
   } else if (procmode == ctumode) {
-    dump_ctu_info(img);
+    dump_ctu_distro(img);
   }
 }
 
@@ -601,7 +688,7 @@ int main(int argc, char** argv) {
   } else if (procmode == predmode) {
       bi += snprintf(buffer + bi, BUFSIZE - bi, "frame,intra,inter,skip,intra_ratio,inter_ratio,skip_ratio");
   } else if (procmode == ctumode) {
-      bi += snprintf(buffer + bi, BUFSIZE - bi, "frame,xb,yb,size,qpy,qpcb,qpcr");
+      bi += snprintf(buffer + bi, BUFSIZE - bi, "frame,ctu8,ctu16,ctu32,ctu64,cut8_ratio,ctu16_ratio,ctu32_ratio,ctu64_ratio,ctu8w,ctu16w,ctu32w,ctu64w,cut8w_ratio,ctu16w_ratio,ctu32w_ratio,ctu64w_ratio");
   }
   buffer[bi] = '\n';
   fprintf(fout, buffer);

@@ -157,12 +157,15 @@ void dump_sps(seq_parameter_set* sps) { sps->dump(STDOUT_FILENO); }
 
 void dump_pps(pic_parameter_set* pps) { pps->dump(STDOUT_FILENO); }
 
+#define MAX_QP_VALUES 60
+
+// aggregate QP values
 void get_qp_distro(const de265_image* img, int* qp_distro, bool weighted, Procmode procmode) {
   const seq_parameter_set& sps = img->get_sps();
   int minCbSize = sps.MinCbSizeY;
 
   // init QP distro
-  for (int q = 0; q < 100; q++) qp_distro[q] = 0;
+  for (int qp = 0; qp < MAX_QP_VALUES; qp++) qp_distro[qp] = 0;
 
   // update QP distro
   for (int y0 = 0; y0 < sps.PicHeightInMinCbsY; y0++) {
@@ -184,7 +187,7 @@ void get_qp_distro(const de265_image* img, int* qp_distro, bool weighted, Procmo
       } else if (procmode == qpcrmode) {
         qp = img->get_QPCr(xb, yb);
       }
-      if (qp < 0 || qp >= 100) {
+      if (qp < 0 || qp >= MAX_QP_VALUES) {
         fprintf(stderr, "error: qp: %d\n", qp);
         continue;
       }
@@ -235,8 +238,8 @@ void dump_image_qp(de265_image* img, Procmode procmode) {
   char buffer[BUFSIZE] = {};
   int bi = 0;
 
-  // calculate QP distro
-  int qp_distro[100];
+  // aggregate QP values into QP distro
+  int qp_distro[MAX_QP_VALUES];
   get_qp_distro(img, qp_distro, weighted, procmode);
 
   // dump frame number
@@ -294,7 +297,7 @@ void dump_image_qp(de265_image* img, Procmode procmode) {
       int CbSize = 1 << log2CbSize;
 
       int q = img->get_QPY(xb, yb);
-      if (q < 0 || q >= 100) {
+      if (q < 0 || q >= MAX_QP_VALUES) {
         fprintf(stderr, "error: q: %d\n", q);
         continue;
       }

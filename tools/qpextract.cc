@@ -200,12 +200,16 @@ void get_qp_distro(const de265_image* img, int* qp_distro, bool weighted, Procmo
   return;
 }
 
+#define MAX_PRED_MODES 3
+// MODE_INTRA, MODE_INTER, MODE_SKIP
+
+// aggregate pred values
 void get_pred_distro(const de265_image* img, int* pred_distro, bool weighted) {
   const seq_parameter_set& sps = img->get_sps();
   int minCbSize = sps.MinCbSizeY;
 
   // init pred distro
-  for (int pred_mode = 0; pred_mode < 100; pred_mode++) pred_distro[pred_mode] = 0;
+  for (int pred_mode = 0; pred_mode < MAX_PRED_MODES; pred_mode++) pred_distro[pred_mode] = 0;
 
   // update PredMode distro
   for (int y0 = 0; y0 < sps.PicHeightInMinCbsY; y0++) {
@@ -316,7 +320,7 @@ void dump_image_pred(de265_image* img) {
   int bi = 0;
 
   // calculate pred distro
-  int pred_distro[3] = { 0 };
+  int pred_distro[MAX_PRED_MODES] = { 0 };
   get_pred_distro(img, pred_distro, weighted);
 
   // dump frame number
@@ -324,13 +328,13 @@ void dump_image_pred(de265_image* img) {
 
   // dump PredMode distro
   int sum = 0;
-  for (int pred_mode = 0; pred_mode < 3; pred_mode++) {
+  for (int pred_mode = 0; pred_mode < MAX_PRED_MODES; pred_mode++) {
     bi += snprintf(buffer + bi, BUFSIZE - bi, "%i,", pred_distro[pred_mode]);
     sum += pred_distro[pred_mode];
   }
 
   // dump PredMode ratio
-  for (int pred_mode = 0; pred_mode < 3; pred_mode++) {
+  for (int pred_mode = 0; pred_mode < MAX_PRED_MODES; pred_mode++) {
     double ratio = (double)pred_distro[pred_mode] / sum;
     bi += snprintf(buffer + bi, BUFSIZE - bi, "%f,", ratio);
   }
@@ -347,7 +351,7 @@ void dump_ctu_info(de265_image* img) {
   const seq_parameter_set& sps = img->get_sps();
   int minCbSize = sps.MinCbSizeY;
 
-  // print QP values
+  // print CTU values
   for (int y0 = 0; y0 < sps.PicHeightInMinCbsY; y0++) {
     for (int x0 = 0; x0 < sps.PicWidthInMinCbsY; x0++) {
       int log2CbSize = img->get_log2CbSize_cbUnits(x0, y0);

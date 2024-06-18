@@ -51,7 +51,7 @@
 
 #define BUFFER_SIZE 40960
 
-enum Procmode { qpymode, qpcbmode, qpcrmode, predmode, ctumode };
+enum Procmode { qpymode, qpcbmode, qpcrmode, predmode, ctumode, fullmode };
 
 bool nal_input = false;
 bool check_hash = false;
@@ -82,6 +82,7 @@ enum {
   QPCBMODE_OPTION,
   QPCRMODE_OPTION,
   CTUMODE_OPTION,
+  FULLMODE_OPTION,
 };
 
 
@@ -106,6 +107,7 @@ static struct option long_options[] = {
     {"qpcbmode", no_argument, nullptr, QPCBMODE_OPTION},
     {"qpcrmode", no_argument, nullptr, QPCRMODE_OPTION},
     {"ctumode", no_argument, nullptr, CTUMODE_OPTION},
+    {"fullmode", no_argument, nullptr, FULLMODE_OPTION},
     {"max-qp", required_argument, nullptr, 'Q'},
     {"min-qp", required_argument, nullptr, 'q'},
     {0, 0, 0, 0},
@@ -476,6 +478,8 @@ void dump_image(de265_image* img) {
     dump_image_pred(img);
   } else if (procmode == ctumode) {
     dump_ctu_distro(img);
+  } else if (procmode == fullmode) {
+    dump_full(img);
   }
 }
 
@@ -507,6 +511,7 @@ void usage(char* argv0) {
   fprintf(stderr, "  --qpcrmode        QPCr mode (get the distribution of QP Cr values)\n");
   fprintf(stderr, "  -p, --predmode    pred mode (get the distribution of prediction modes)\n");
   fprintf(stderr, "  --ctumode         ctu mode (get the distribution of CTUs)\n");
+  fprintf(stderr, "  --fullmode        full mode (get full QP, pred, CTU info)\n");
   fprintf(stderr, "  -h, --help        show help\n");
 }
 
@@ -601,6 +606,9 @@ int main(int argc, char** argv) {
       case CTUMODE_OPTION:
         procmode = ctumode;
         break;
+      case FULLMODE_OPTION:
+        procmode = fullmode;
+        break;
     }
   }
 
@@ -689,6 +697,8 @@ int main(int argc, char** argv) {
       bi += snprintf(buffer + bi, BUFSIZE - bi, "frame,intra,inter,skip,intra_ratio,inter_ratio,skip_ratio");
   } else if (procmode == ctumode) {
       bi += snprintf(buffer + bi, BUFSIZE - bi, "frame,ctu8,ctu16,ctu32,ctu64,cut8_ratio,ctu16_ratio,ctu32_ratio,ctu64_ratio,ctu8w,ctu16w,ctu32w,ctu64w,cut8w_ratio,ctu16w_ratio,ctu32w_ratio,ctu64w_ratio");
+  } else if (procmode == fullmode) {
+      bi += snprintf(buffer + bi, BUFSIZE - bi, "frame,xb,yb,size,qpy,qpcb,qpcr,pred_mode,ctu_size");
   }
   buffer[bi] = '\n';
   fprintf(fout, buffer);

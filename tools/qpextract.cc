@@ -162,12 +162,15 @@ void dump_pps(pic_parameter_set* pps) { pps->dump(STDOUT_FILENO); }
 #define MAX_QP_VALUES 60
 
 // aggregate QP values
-void get_qp_distro(const de265_image* img, int* qp_distro, bool weighted, Procmode procmode) {
+void get_qp_distro(const de265_image* img, int* qp_distro, int* qp_distro_weighted, Procmode procmode) {
   const seq_parameter_set& sps = img->get_sps();
   int minCbSize = sps.MinCbSizeY;
 
   // init QP distro
-  for (int qp = 0; qp < MAX_QP_VALUES; qp++) qp_distro[qp] = 0;
+  for (int qp = 0; qp < MAX_QP_VALUES; qp++) {
+    qp_distro[qp] = 0;
+    qp_distro_weighted[qp] = 0;
+  }
 
   // update QP distro
   for (int y0 = 0; y0 < sps.PicHeightInMinCbsY; y0++) {
@@ -193,10 +196,9 @@ void get_qp_distro(const de265_image* img, int* qp_distro, bool weighted, Procmo
         fprintf(stderr, "error: qp: %d\n", qp);
         continue;
       }
-      // normalize the QP distro by CB size
-      // qp_distro[qp] += (CbSize*CbSize);
       // provide per-block QP output
-      qp_distro[qp] += (!weighted) ? 1 : (CbSize * CbSize);
+      qp_distro[qp] += 1;
+      qp_distro_weighted[qp] += CbSize * CbSize;
     }
   }
   return;
@@ -313,7 +315,8 @@ void dump_image_qp(de265_image* img, Procmode procmode) {
 
   // aggregate QP values into QP distro
   int qp_distro[MAX_QP_VALUES];
-  get_qp_distro(img, qp_distro, weighted, procmode);
+  int qp_distro_weighted[MAX_QP_VALUES];
+  get_qp_distro(img, qp_distro, qp_distro_weighted, procmode);
 
   // dump frame number
   bi += snprintf(buffer + bi, BUFSIZE - bi, "%i,", img->get_ID());
@@ -327,6 +330,12 @@ void dump_image_qp(de265_image* img, Procmode procmode) {
   get_qp_statistics(qp_distro, &qp_max, &qp_min, &qp_num, &qp_avg, &qp_stddev);
 
   // dump QP statistics
+  bi += snprintf(buffer + bi, BUFSIZE - bi, "%i,%i,%i,%f,%f,", qp_num, qp_min, qp_max, qp_avg, qp_stddev);
+
+  // get weighted QP statistics
+  get_qp_statistics(qp_distro_weighted, &qp_max, &qp_min, &qp_num, &qp_avg, &qp_stddev);
+
+  // dump weighted QP statistics
   bi += snprintf(buffer + bi, BUFSIZE - bi, "%i,%i,%i,%f,%f,", qp_num, qp_min, qp_max, qp_avg, qp_stddev);
 
   // dump QP distro
@@ -685,7 +694,7 @@ int main(int argc, char** argv) {
   char buffer[BUFSIZE] = {};
   int bi = 0;
   if ((procmode == qpymode) || (procmode == qpcbmode) || (procmode == qpcrmode)) {
-      bi += snprintf(buffer + bi, BUFSIZE - bi, "frame,qp_num,qp_min,qp_max,qp_avg,qp_stddev");
+      bi += snprintf(buffer + bi, BUFSIZE - bi, "frame,qp_num,qp_min,qp_max,qp_avg,qp_stddev,qpw_num,qpw_min,qpw_max,qpw_avg,qpw_stddev");
       for (int qp = minQP; qp <= maxQP; qp++) {
         bi += snprintf(buffer + bi, BUFSIZE - bi, ",%i", qp);
       }

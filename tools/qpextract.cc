@@ -206,12 +206,15 @@ void get_qp_distro(const de265_image* img, int* qp_distro, bool weighted, Procmo
 // MODE_INTRA, MODE_INTER, MODE_SKIP
 
 // aggregate pred values
-void get_pred_distro(const de265_image* img, int* pred_distro, bool weighted) {
+void get_pred_distro(const de265_image* img, int* pred_distro, int *pred_distro_weighted) {
   const seq_parameter_set& sps = img->get_sps();
   int minCbSize = sps.MinCbSizeY;
 
   // init pred distro
-  for (int pred_mode = 0; pred_mode < MAX_PRED_MODES; pred_mode++) pred_distro[pred_mode] = 0;
+  for (int pred_mode = 0; pred_mode < MAX_PRED_MODES; pred_mode++) {
+    pred_distro[pred_mode] = 0;
+    pred_distro_weighted[pred_mode] = 0;
+  }
 
   // update PredMode distro
   for (int y0 = 0; y0 < sps.PicHeightInMinCbsY; y0++) {
@@ -230,10 +233,10 @@ void get_pred_distro(const de265_image* img, int* pred_distro, bool weighted) {
         fprintf(stderr, "error: pred_mode: %d\n", pred_mode);
         continue;
       }
-      // normalize the PredMode distro by CB size
-      // pred_distro[pred_mode] += (CbSize*CbSize);
       // provide per-block PredMode output
-      pred_distro[pred_mode] += (!weighted) ? 1 : (CbSize * CbSize);
+      pred_distro[pred_mode] += 1;
+      // normalize the PredMode distro by CB size
+      pred_distro_weighted[pred_mode] += CbSize * CbSize;
     }
   }
   return;
@@ -362,7 +365,8 @@ void dump_image_pred(de265_image* img) {
 
   // calculate pred distro
   int pred_distro[MAX_PRED_MODES] = { 0 };
-  get_pred_distro(img, pred_distro, weighted);
+  int pred_distro_weighted[MAX_PRED_MODES] = { 0 };
+  get_pred_distro(img, pred_distro, pred_distro_weighted);
 
   // dump frame number
   bi += snprintf(buffer + bi, BUFSIZE - bi, "%i,", img->get_ID());
@@ -377,6 +381,19 @@ void dump_image_pred(de265_image* img) {
   // dump PredMode ratio
   for (int pred_mode = 0; pred_mode < MAX_PRED_MODES; pred_mode++) {
     double ratio = (double)pred_distro[pred_mode] / sum;
+    bi += snprintf(buffer + bi, BUFSIZE - bi, "%f,", ratio);
+  }
+
+  // dump PredMode distro
+  int sumw = 0;
+  for (int pred_mode = 0; pred_mode < MAX_PRED_MODES; pred_mode++) {
+    bi += snprintf(buffer + bi, BUFSIZE - bi, "%i,", pred_distro_weighted[pred_mode]);
+    sumw += pred_distro_weighted[pred_mode];
+  }
+
+  // dump PredMode ratio
+  for (int pred_mode = 0; pred_mode < MAX_PRED_MODES; pred_mode++) {
+    double ratio = (double)pred_distro_weighted[pred_mode] / sumw;
     bi += snprintf(buffer + bi, BUFSIZE - bi, "%f,", ratio);
   }
 
@@ -694,7 +711,7 @@ int main(int argc, char** argv) {
         bi += snprintf(buffer + bi, BUFSIZE - bi, ",%i", qp);
       }
   } else if (procmode == predmode) {
-      bi += snprintf(buffer + bi, BUFSIZE - bi, "frame,intra,inter,skip,intra_ratio,inter_ratio,skip_ratio");
+      bi += snprintf(buffer + bi, BUFSIZE - bi, "frame,intra,inter,skip,intra_ratio,inter_ratio,skip_ratio,intraw,interw,skipw,intraw_ratio,interw_ratio,skipw_ratio");
   } else if (procmode == ctumode) {
       bi += snprintf(buffer + bi, BUFSIZE - bi, "frame,ctu8,ctu16,ctu32,ctu64,cut8_ratio,ctu16_ratio,ctu32_ratio,ctu64_ratio,ctu8w,ctu16w,ctu32w,ctu64w,cut8w_ratio,ctu16w_ratio,ctu32w_ratio,ctu64w_ratio");
   } else if (procmode == fullmode) {

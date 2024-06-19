@@ -346,6 +346,11 @@ void dump_image_qp(de265_image* img, Procmode procmode) {
   for (int qp = minQP; qp <= maxQP; qp++) {
     bi += snprintf(buffer + bi, BUFSIZE - bi, "%i,", qp_distro[qp]);
   }
+
+  // dump QP distro (weighted)
+  for (int qp = minQP; qp <= maxQP; qp++) {
+    bi += snprintf(buffer + bi, BUFSIZE - bi, "%i,", qp_distro_weighted[qp]);
+  }
   buffer[bi - 1] = '\n';
   fprintf(fout, buffer);
 }
@@ -713,6 +718,9 @@ int main(int argc, char** argv) {
                    "min,qpw_max,qpw_avg,qpw_stddev");
     for (int qp = minQP; qp <= maxQP; qp++) {
       bi += snprintf(buffer + bi, BUFSIZE - bi, ",%i", qp);
+    }
+    for (int qp = minQP; qp <= maxQP; qp++) {
+      bi += snprintf(buffer + bi, BUFSIZE - bi, ",%iw", qp);
     }
   } else if (procmode == predmode) {
     bi += snprintf(buffer + bi, BUFSIZE - bi,

@@ -35,8 +35,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include <limits>
 #include <climits>
+#include <limits>
 #ifdef HAVE_MALLOC_H
 #include <malloc.h>
 #endif
@@ -72,7 +72,6 @@ char* outfile = NULL;
 FILE* fin = NULL;
 FILE* fout = NULL;
 
-
 // long options with no equivalent short option
 enum {
   DISABLE_DEBLOCKING_OPTION = CHAR_MAX + 1,
@@ -83,7 +82,6 @@ enum {
   CTUMODE_OPTION,
   FULLMODE_OPTION,
 };
-
 
 static struct option long_options[] = {
     {"check-hash", no_argument, nullptr, 'c'},
@@ -99,7 +97,8 @@ static struct option long_options[] = {
     {"noaccel", no_argument, nullptr, '0'},
     {"highest-TID", required_argument, nullptr, 'T'},
     {"verbose", no_argument, nullptr, 'v'},
-    {"disable-deblocking", no_argument, &disable_deblocking, DISABLE_DEBLOCKING_OPTION},
+    {"disable-deblocking", no_argument, &disable_deblocking,
+     DISABLE_DEBLOCKING_OPTION},
     {"disable-sao", no_argument, &disable_sao, DISABLE_SAO_OPTION},
     {"qpymode", no_argument, nullptr, QPYMODE_OPTION},
     {"qpcbmode", no_argument, nullptr, QPCBMODE_OPTION},
@@ -160,7 +159,8 @@ void dump_pps(pic_parameter_set* pps) { pps->dump(STDOUT_FILENO); }
 #define MAX_QP_VALUES 60
 
 // aggregate QP values
-void get_qp_distro(const de265_image* img, int* qp_distro, int* qp_distro_weighted, Procmode procmode) {
+void get_qp_distro(const de265_image* img, int* qp_distro,
+                   int* qp_distro_weighted, Procmode procmode) {
   const seq_parameter_set& sps = img->get_sps();
   int minCbSize = sps.MinCbSizeY;
 
@@ -206,7 +206,8 @@ void get_qp_distro(const de265_image* img, int* qp_distro, int* qp_distro_weight
 // MODE_INTRA, MODE_INTER, MODE_SKIP
 
 // aggregate pred values
-void get_pred_distro(const de265_image* img, int* pred_distro, int *pred_distro_weighted) {
+void get_pred_distro(const de265_image* img, int* pred_distro,
+                     int* pred_distro_weighted) {
   const seq_parameter_set& sps = img->get_sps();
   int minCbSize = sps.MinCbSizeY;
 
@@ -246,7 +247,8 @@ void get_pred_distro(const de265_image* img, int* pred_distro, int *pred_distro_
 #define MAX_CTU_VALUES 4
 
 // aggregate CTU values
-void get_ctu_distro(const de265_image* img, int* ctu_distro, int* ctu_distro_weighted) {
+void get_ctu_distro(const de265_image* img, int* ctu_distro,
+                    int* ctu_distro_weighted) {
   const seq_parameter_set& sps = img->get_sps();
   int minCbSize = sps.MinCbSizeY;
 
@@ -281,7 +283,8 @@ void get_ctu_distro(const de265_image* img, int* ctu_distro, int* ctu_distro_wei
   return;
 }
 
-void get_qp_statistics(int* qp_distro, int* qp_max, int* qp_min, int* qp_num, double* qp_avg, double* qp_stddev) {
+void get_qp_statistics(int* qp_distro, int* qp_max, int* qp_min, int* qp_num,
+                       double* qp_avg, double* qp_stddev) {
   *qp_max = -1;
   *qp_min = -1;
   int qp_sum = 0;
@@ -289,10 +292,10 @@ void get_qp_statistics(int* qp_distro, int* qp_max, int* qp_min, int* qp_num, do
 
   for (int qp = minQP; qp <= maxQP; qp++) {
     if ((qp_distro[qp] > 0) && (*qp_max == -1 || qp > *qp_max)) {
-        *qp_max = qp;
+      *qp_max = qp;
     }
     if ((qp_distro[qp] > 0) && (*qp_min == -1 || qp < *qp_min)) {
-        *qp_min = qp;
+      *qp_min = qp;
     }
     qp_sum += qp * qp_distro[qp];
     *qp_num += qp_distro[qp];
@@ -301,7 +304,7 @@ void get_qp_statistics(int* qp_distro, int* qp_max, int* qp_min, int* qp_num, do
   double qp_sumsquare = 0;
   for (int qp = minQP; qp <= maxQP; qp++) {
     double diff = qp - *qp_avg;
-    qp_sumsquare += (diff) * (diff) * qp_distro[qp];
+    qp_sumsquare += (diff) * (diff)*qp_distro[qp];
   }
   *qp_stddev = sqrt(qp_sumsquare / (*qp_num));
 }
@@ -328,13 +331,16 @@ void dump_image_qp(de265_image* img, Procmode procmode) {
   get_qp_statistics(qp_distro, &qp_max, &qp_min, &qp_num, &qp_avg, &qp_stddev);
 
   // dump QP statistics
-  bi += snprintf(buffer + bi, BUFSIZE - bi, "%i,%i,%i,%f,%f,", qp_num, qp_min, qp_max, qp_avg, qp_stddev);
+  bi += snprintf(buffer + bi, BUFSIZE - bi, "%i,%i,%i,%f,%f,", qp_num, qp_min,
+                 qp_max, qp_avg, qp_stddev);
 
   // get weighted QP statistics
-  get_qp_statistics(qp_distro_weighted, &qp_max, &qp_min, &qp_num, &qp_avg, &qp_stddev);
+  get_qp_statistics(qp_distro_weighted, &qp_max, &qp_min, &qp_num, &qp_avg,
+                    &qp_stddev);
 
   // dump weighted QP statistics
-  bi += snprintf(buffer + bi, BUFSIZE - bi, "%i,%i,%i,%f,%f,", qp_num, qp_min, qp_max, qp_avg, qp_stddev);
+  bi += snprintf(buffer + bi, BUFSIZE - bi, "%i,%i,%i,%f,%f,", qp_num, qp_min,
+                 qp_max, qp_avg, qp_stddev);
 
   // dump QP distro
   for (int qp = minQP; qp <= maxQP; qp++) {
@@ -350,8 +356,8 @@ void dump_image_pred(de265_image* img) {
   int bi = 0;
 
   // calculate pred distro
-  int pred_distro[MAX_PRED_MODES] = { 0 };
-  int pred_distro_weighted[MAX_PRED_MODES] = { 0 };
+  int pred_distro[MAX_PRED_MODES] = {0};
+  int pred_distro_weighted[MAX_PRED_MODES] = {0};
   get_pred_distro(img, pred_distro, pred_distro_weighted);
 
   // dump frame number
@@ -373,7 +379,8 @@ void dump_image_pred(de265_image* img) {
   // dump PredMode distro
   int sumw = 0;
   for (int pred_mode = 0; pred_mode < MAX_PRED_MODES; pred_mode++) {
-    bi += snprintf(buffer + bi, BUFSIZE - bi, "%i,", pred_distro_weighted[pred_mode]);
+    bi += snprintf(buffer + bi, BUFSIZE - bi, "%i,",
+                   pred_distro_weighted[pred_mode]);
     sumw += pred_distro_weighted[pred_mode];
   }
 
@@ -394,8 +401,8 @@ void dump_ctu_distro(de265_image* img) {
   int bi = 0;
 
   // calculate CTU distro
-  int ctu_distro[MAX_CTU_VALUES] = { 0 };
-  int ctu_distro_weighted[MAX_CTU_VALUES] = { 0 };
+  int ctu_distro[MAX_CTU_VALUES] = {0};
+  int ctu_distro_weighted[MAX_CTU_VALUES] = {0};
   get_ctu_distro(img, ctu_distro, ctu_distro_weighted);
 
   // dump frame number
@@ -417,7 +424,8 @@ void dump_ctu_distro(de265_image* img) {
   // dump CTU weighted distro
   int sumw = 0;
   for (int ctu_size = 0; ctu_size < MAX_CTU_VALUES; ctu_size++) {
-    bi += snprintf(buffer + bi, BUFSIZE - bi, "%i,", ctu_distro_weighted[ctu_size]);
+    bi += snprintf(buffer + bi, BUFSIZE - bi, "%i,",
+                   ctu_distro_weighted[ctu_size]);
     sumw += ctu_distro_weighted[ctu_size];
   }
 
@@ -475,7 +483,8 @@ void dump_full(de265_image* img) {
 }
 
 void dump_image(de265_image* img) {
-  if ((procmode == qpymode) || (procmode == qpcbmode) || (procmode == qpcrmode)) {
+  if ((procmode == qpymode) || (procmode == qpcbmode) ||
+      (procmode == qpcrmode)) {
     dump_image_qp(img, procmode);
   } else if (procmode == predmode) {
     dump_image_pred(img);
@@ -508,12 +517,22 @@ void usage(char* argv0) {
       "      --disable-sao          disable sample-adaptive offset filter\n");
   fprintf(stderr, "  -q, --min-qp      minimum QP for CSV dump\n");
   fprintf(stderr, "  -Q, --max-qp      maximum QP for CSV dump\n");
-  fprintf(stderr, "  --qpymode         QPY mode (get the distribution of QP Y values)\n");
-  fprintf(stderr, "  --qpcbmode        QPCb mode (get the distribution of QP Cb values)\n");
-  fprintf(stderr, "  --qpcrmode        QPCr mode (get the distribution of QP Cr values)\n");
-  fprintf(stderr, "  -p, --predmode    pred mode (get the distribution of prediction modes)\n");
-  fprintf(stderr, "  --ctumode         ctu mode (get the distribution of CTUs)\n");
-  fprintf(stderr, "  --fullmode        full mode (get full QP, pred, CTU info)\n");
+  fprintf(
+      stderr,
+      "  --qpymode         QPY mode (get the distribution of QP Y values)\n");
+  fprintf(
+      stderr,
+      "  --qpcbmode        QPCb mode (get the distribution of QP Cb values)\n");
+  fprintf(
+      stderr,
+      "  --qpcrmode        QPCr mode (get the distribution of QP Cr values)\n");
+  fprintf(stderr,
+          "  -p, --predmode    pred mode (get the distribution of prediction "
+          "modes)\n");
+  fprintf(stderr,
+          "  --ctumode         ctu mode (get the distribution of CTUs)\n");
+  fprintf(stderr,
+          "  --fullmode        full mode (get full QP, pred, CTU info)\n");
   fprintf(stderr, "  -h, --help        show help\n");
 }
 
@@ -687,17 +706,26 @@ int main(int argc, char** argv) {
 #define BUFSIZE 1024
   char buffer[BUFSIZE] = {};
   int bi = 0;
-  if ((procmode == qpymode) || (procmode == qpcbmode) || (procmode == qpcrmode)) {
-      bi += snprintf(buffer + bi, BUFSIZE - bi, "frame,qp_num,qp_min,qp_max,qp_avg,qp_stddev,qpw_num,qpw_min,qpw_max,qpw_avg,qpw_stddev");
-      for (int qp = minQP; qp <= maxQP; qp++) {
-        bi += snprintf(buffer + bi, BUFSIZE - bi, ",%i", qp);
-      }
+  if ((procmode == qpymode) || (procmode == qpcbmode) ||
+      (procmode == qpcrmode)) {
+    bi += snprintf(buffer + bi, BUFSIZE - bi,
+                   "frame,qp_num,qp_min,qp_max,qp_avg,qp_stddev,qpw_num,qpw_"
+                   "min,qpw_max,qpw_avg,qpw_stddev");
+    for (int qp = minQP; qp <= maxQP; qp++) {
+      bi += snprintf(buffer + bi, BUFSIZE - bi, ",%i", qp);
+    }
   } else if (procmode == predmode) {
-      bi += snprintf(buffer + bi, BUFSIZE - bi, "frame,intra,inter,skip,intra_ratio,inter_ratio,skip_ratio,intraw,interw,skipw,intraw_ratio,interw_ratio,skipw_ratio");
+    bi += snprintf(buffer + bi, BUFSIZE - bi,
+                   "frame,intra,inter,skip,intra_ratio,inter_ratio,skip_ratio,"
+                   "intraw,interw,skipw,intraw_ratio,interw_ratio,skipw_ratio");
   } else if (procmode == ctumode) {
-      bi += snprintf(buffer + bi, BUFSIZE - bi, "frame,ctu8,ctu16,ctu32,ctu64,cut8_ratio,ctu16_ratio,ctu32_ratio,ctu64_ratio,ctu8w,ctu16w,ctu32w,ctu64w,cut8w_ratio,ctu16w_ratio,ctu32w_ratio,ctu64w_ratio");
+    bi += snprintf(buffer + bi, BUFSIZE - bi,
+                   "frame,ctu8,ctu16,ctu32,ctu64,cut8_ratio,ctu16_ratio,ctu32_"
+                   "ratio,ctu64_ratio,ctu8w,ctu16w,ctu32w,ctu64w,cut8w_ratio,"
+                   "ctu16w_ratio,ctu32w_ratio,ctu64w_ratio");
   } else if (procmode == fullmode) {
-      bi += snprintf(buffer + bi, BUFSIZE - bi, "frame,xb,yb,size,qpy,qpcb,qpcr,pred_mode,ctu_size");
+    bi += snprintf(buffer + bi, BUFSIZE - bi,
+                   "frame,xb,yb,size,qpy,qpcb,qpcr,pred_mode,ctu_size");
   }
   buffer[bi] = '\n';
   fprintf(fout, buffer);

@@ -64,7 +64,6 @@ int highestTID = 100;
 int maxQP = 52;
 int minQP = 0;
 Procmode procmode = qpymode;
-bool weighted = false;
 int verbosity = 0;
 int disable_deblocking = 0;
 int disable_sao = 0;
@@ -88,7 +87,6 @@ enum {
 
 static struct option long_options[] = {
     {"check-hash", no_argument, nullptr, 'c'},
-    {"weighted", no_argument, nullptr, 'w'},
     {"predmode", no_argument, nullptr, 'p'},
     {"frames", required_argument, nullptr, 'f'},
     {"infile", required_argument, nullptr, 'i'},
@@ -510,7 +508,6 @@ void usage(char* argv0) {
       "      --disable-sao          disable sample-adaptive offset filter\n");
   fprintf(stderr, "  -q, --min-qp      minimum QP for CSV dump\n");
   fprintf(stderr, "  -Q, --max-qp      maximum QP for CSV dump\n");
-  fprintf(stderr, "  -w, --weighted    weighted mode (multiply each QP times the number of pixels)\n");
   fprintf(stderr, "  --qpymode         QPY mode (get the distribution of QP Y values)\n");
   fprintf(stderr, "  --qpcbmode        QPCb mode (get the distribution of QP Cb values)\n");
   fprintf(stderr, "  --qpcrmode        QPCr mode (get the distribution of QP Cr values)\n");
@@ -583,9 +580,6 @@ int main(int argc, char** argv) {
         break;
       case 'v':
         verbosity++;
-        break;
-      case 'w':
-        weighted = true;
         break;
       case 'i':
         infile = optarg;

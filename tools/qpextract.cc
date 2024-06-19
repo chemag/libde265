@@ -335,39 +335,6 @@ void dump_image_qp(de265_image* img, Procmode procmode) {
   }
   buffer[bi - 1] = '\n';
   fprintf(fout, buffer);
-
-  if (!verbosity) {
-    return;
-  }
-
-  // dump all the QP values
-  const seq_parameter_set& sps = img->get_sps();
-  int minCbSize = sps.MinCbSizeY;
-
-  for (int y0 = 0; y0 < sps.PicHeightInMinCbsY; y0++) {
-    for (int x0 = 0; x0 < sps.PicWidthInMinCbsY; x0++) {
-      int log2CbSize = img->get_log2CbSize_cbUnits(x0, y0);
-      if (log2CbSize == 0) {
-        continue;
-      }
-
-      int xb = x0 * minCbSize;
-      int yb = y0 * minCbSize;
-
-      int CbSize = 1 << log2CbSize;
-
-      int q = img->get_QPY(xb, yb);
-      if (q < 0 || q >= MAX_QP_VALUES) {
-        fprintf(stderr, "error: q: %d\n", q);
-        continue;
-      }
-      // provide per-block QP output
-      fprintf(stderr, "id: %i qp_coord[%i,%i]: %i CbSize: %i\n", img->get_ID(),
-              xb, yb, q, CbSize);
-    }
-  }
-
-  fprintf(fout, buffer);
 }
 
 void dump_image_pred(de265_image* img) {

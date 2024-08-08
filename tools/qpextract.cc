@@ -714,8 +714,8 @@ int main(int argc, char** argv) {
   if ((procmode == qpymode) || (procmode == qpcbmode) ||
       (procmode == qpcrmode)) {
     bi += snprintf(buffer + bi, BUFSIZE - bi,
-                   "frame,qp_num,qp_min,qp_max,qp_avg,qp_stddev,qpw_num,qpw_"
-                   "min,qpw_max,qpw_avg,qpw_stddev");
+                   "frame,qp_num,qp_min,qp_max,qp_avg,qp_stddev,"
+                   "qpw_num,qpw_min,qpw_max,qpw_avg,qpw_stddev");
     for (int qp = minQP; qp <= maxQP; qp++) {
       bi += snprintf(buffer + bi, BUFSIZE - bi, ",%i", qp);
     }

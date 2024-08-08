@@ -33,8 +33,41 @@ $ tools/qpextract -i tears_400_x265.h265  | csvcut -c frame,qp_num,qp_min,qp_max
 | 334   | 444    | 38     | 41     | 40.238739 | 1.139675  | 1536000 | 38      | 41      | 40.478667 | 1.004097   |
 ```
 
-Each line contains the frame ID, and the distribution of the QP values for the frame (number, min, max, avg, stddev). Values are both non-weighted (all CUs weighted the same) and weighted (CUs are weighted by their size).
+Each line contains the frame ID, and the distribution of the QP values for the frame (number, min, max, avg, stddev). Values are both non-weighted (all CUs weighted the same) and weighted (CUs are weighted by their size, so the QP for a 64x64 CU is considered 4x times in the average when compared to a 32x32 CU)).
 
 For example, the second line corresponds to frame 1, and has 981 CUs, with an average of 33.89 QP value. The full histogram is also in the output (removed here).
+
+
+# Other Options
+
+The default CLI arguments will produce the distribution of the luminance QP values. The tool can also produce the distribution of:
+* chrominance (Cb or Cr) QP values
+* prediction modes
+* CTU mode (plain distribution of CUs)
+
+See the help output:
+```
+$ tools/qpextract --help
+# qpextract  v1.0.3
+usage: /home/chemag/proj/libde265/tools/.libs/qpextract [options] -i videofile.bin [-o output.csv]
+The video file must be a raw bitstream, or a stream with NAL units (option -n).
+
+options:
+  -c, --check-hash  perform hash check
+  -n, --nal         input is a stream with 4-byte length prefixed NAL units
+  -d, --dump        dump headers
+  -T, --highest-TID select highest temporal sublayer to decode
+      --disable-deblocking   disable deblocking filter
+      --disable-sao          disable sample-adaptive offset filter
+  -q, --min-qp      minimum QP for CSV dump
+  -Q, --max-qp      maximum QP for CSV dump
+  --qpymode         QPY mode (get the distribution of QP Y values)
+  --qpcbmode        QPCb mode (get the distribution of QP Cb values)
+  --qpcrmode        QPCr mode (get the distribution of QP Cr values)
+  -p, --predmode    pred mode (get the distribution of prediction modes)
+  --ctumode         ctu mode (get the distribution of CTUs)
+  --fullmode        full mode (get full QP, pred, CTU info)
+  -h, --help        show help
+```
 
 Go back to the [main libde265 page](README.md).

@@ -6,23 +6,35 @@ or a stream with NAL units.
 
 # Operation
 
+(1) build from the qpextract branch
 ```
-$ tools/qpextract input_file.265
-id: 0 qp_distro[26:36] { 84 143 164 199 272 409 323 557 455 664 330 }
-id: 1 qp_distro[35:41] { 5 0 0 1 11 1448 2135 }
-id: 2 qp_distro[38:43] { 12 0 0 0 1697 1891 }
-id: 3 qp_distro[41:44] { 21 1 362 3216 }
-id: 4 qp_distro[44:46] { 20 2436 1144 }
-id: 5 qp_distro[46:47] { 1850 1750 }
-id: 6 qp_distro[47:48] { 380 3220 }
-id: 7 qp_distro[48:49] { 1043 2557 }
-id: 8 qp_distro[49:49] { 3600 }
-id: 9 qp_distro[49:49] { 3600 }
-id: 10 qp_distro[49:49] { 3600 }
-id: 11 qp_distro[49:50] { 712 2888 }
-id: 12 qp_distro[49:50] { 670 2930 }
+$ git clone --branch qpextract https://github.com/chemag/libde265
+$ cd libde265
+$ ./autogen.sh
+$ ./configure --enable-sherlock265
+$ make -j
 ```
 
-Each line contains the frame ID, and the distribution of the QP values for the fame. The second line (`id: 1 qp_distro[35:41] { 5 0 0 1 11 1448 2135 }`) corresponds to frame 1, and has 5x 35 QP values, 1x 38 QP values, 11x 39 QP values, 1148 40 QP values, and 2135x 41 QP values.
+(2) analyze an Annex B file
+```
+$ tools/qpextract -i tears_400_x265.h265  | csvcut -c frame,qp_num,qp_min,qp_max,qp_avg,qp_stddev,qpw_num,qpw_min,qpw_max,qpw_avg,qpw_stddev | csvlook -I
+| frame | qp_num | qp_min | qp_max | qp_avg    | qp_stddev | qpw_num | qpw_min | qpw_max | qpw_avg   | qpw_stddev |
+| ----- | ------ | ------ | ------ | --------- | --------- | ------- | ------- | ------- | --------- | ---------- |
+| 0     | 1563   | 29     | 34     | 30.872681 | 1.282208  | 1536000 | 29      | 34      | 31.115833 | 1.307701   |
+| 1     | 981    | 32     | 40     | 33.895005 | 1.199807  | 1536000 | 32      | 40      | 34.074583 | 1.204825   |
+| 2     | 567    | 38     | 41     | 38.941799 | 0.915359  | 1536000 | 38      | 41      | 38.864500 | 0.880420   |
+| 3     | 486    | 39     | 42     | 40.518519 | 0.995187  | 1536000 | 39      | 42      | 40.447000 | 1.019407   |
+| 4     | 459    | 39     | 42     | 40.366013 | 0.927091  | 1536000 | 39      | 42      | 40.319000 | 0.934473   |
+| 5     | 438    | 39     | 42     | 40.826484 | 1.041176  | 1536000 | 39      | 42      | 40.813333 | 1.076331   |
+| 6     | 1029   | 32     | 40     | 34.125364 | 1.218910  | 1536000 | 32      | 40      | 34.409875 | 1.411073   |
+...
+| 332   | 480    | 38     | 41     | 40.372917 | 0.998173  | 1536000 | 38      | 41      | 40.549333 | 0.933577   |
+| 333   | 495    | 38     | 41     | 39.846465 | 1.236100  | 1536000 | 38      | 41      | 39.978333 | 1.228223   |
+| 334   | 444    | 38     | 41     | 40.238739 | 1.139675  | 1536000 | 38      | 41      | 40.478667 | 1.004097   |
+```
+
+Each line contains the frame ID, and the distribution of the QP values for the frame (number, min, max, avg, stddev). Values are both non-weighted (all CUs weighted the same) and weighted (CUs are weighted by their size).
+
+For example, the second line corresponds to frame 1, and has 981 CUs, with an average of 33.89 QP value. The full histogram is also in the output (removed here).
 
 Go back to the [main libde265 page](README.md).

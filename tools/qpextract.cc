@@ -61,7 +61,7 @@ bool no_acceleration = false;
 const char* bytestream_filename;
 const char* reference_filename;
 int highestTID = 100;
-int maxPrintedQP = 52;
+int maxPrintedQP = 63;
 int minPrintedQP = 0;
 Procmode procmode = qpymode;
 int verbosity = 0;

@@ -309,6 +309,35 @@ void get_qp_statistics(int* qp_distro, int* qp_max, int* qp_min, int* qp_num,
   *qp_stddev = sqrt(qp_sumsquare / (*qp_num));
 }
 
+void dump_csv_header(char* buffer, int bufsize, int* bi, Procmode procmode) {
+  if ((procmode == qpymode) || (procmode == qpcbmode) ||
+      (procmode == qpcrmode)) {
+    *bi += snprintf(buffer + *bi, bufsize - *bi,
+                   "frame,qp_num,qp_min,qp_max,qp_avg,qp_stddev,"
+                   "qpw_num,qpw_min,qpw_max,qpw_avg,qpw_stddev");
+    for (int qp = minPrintedQP; qp <= maxPrintedQP; qp++) {
+      *bi += snprintf(buffer + *bi, bufsize - *bi, ",%i", qp);
+    }
+    for (int qp = minPrintedQP; qp <= maxPrintedQP; qp++) {
+      *bi += snprintf(buffer + *bi, bufsize - *bi, ",%iw", qp);
+    }
+  } else if (procmode == predmode) {
+    *bi += snprintf(buffer + *bi, bufsize - *bi,
+                   "frame,intra,inter,skip,intra_ratio,inter_ratio,skip_ratio,"
+                   "intraw,interw,skipw,intraw_ratio,interw_ratio,skipw_ratio");
+  } else if (procmode == ctumode) {
+    *bi += snprintf(buffer + *bi, bufsize - *bi,
+                   "frame,ctu8,ctu16,ctu32,ctu64,cut8_ratio,ctu16_ratio,ctu32_"
+                   "ratio,ctu64_ratio,ctu8w,ctu16w,ctu32w,ctu64w,cut8w_ratio,"
+                   "ctu16w_ratio,ctu32w_ratio,ctu64w_ratio");
+  } else if (procmode == fullmode) {
+    *bi += snprintf(buffer + *bi, bufsize - *bi,
+                   "frame,xb,yb,size,qpy,qpcb,qpcr,pred_mode,ctu_size");
+  }
+  buffer[*bi] = '\n';
+}
+
+
 void dump_image_qp(de265_image* img, Procmode procmode) {
 #define BUFSIZE 1024
   char buffer[BUFSIZE] = {};
@@ -711,31 +740,7 @@ int main(int argc, char** argv) {
 #define BUFSIZE 1024
   char buffer[BUFSIZE] = {};
   int bi = 0;
-  if ((procmode == qpymode) || (procmode == qpcbmode) ||
-      (procmode == qpcrmode)) {
-    bi += snprintf(buffer + bi, BUFSIZE - bi,
-                   "frame,qp_num,qp_min,qp_max,qp_avg,qp_stddev,"
-                   "qpw_num,qpw_min,qpw_max,qpw_avg,qpw_stddev");
-    for (int qp = minQP; qp <= maxQP; qp++) {
-      bi += snprintf(buffer + bi, BUFSIZE - bi, ",%i", qp);
-    }
-    for (int qp = minQP; qp <= maxQP; qp++) {
-      bi += snprintf(buffer + bi, BUFSIZE - bi, ",%iw", qp);
-    }
-  } else if (procmode == predmode) {
-    bi += snprintf(buffer + bi, BUFSIZE - bi,
-                   "frame,intra,inter,skip,intra_ratio,inter_ratio,skip_ratio,"
-                   "intraw,interw,skipw,intraw_ratio,interw_ratio,skipw_ratio");
-  } else if (procmode == ctumode) {
-    bi += snprintf(buffer + bi, BUFSIZE - bi,
-                   "frame,ctu8,ctu16,ctu32,ctu64,cut8_ratio,ctu16_ratio,ctu32_"
-                   "ratio,ctu64_ratio,ctu8w,ctu16w,ctu32w,ctu64w,cut8w_ratio,"
-                   "ctu16w_ratio,ctu32w_ratio,ctu64w_ratio");
-  } else if (procmode == fullmode) {
-    bi += snprintf(buffer + bi, BUFSIZE - bi,
-                   "frame,xb,yb,size,qpy,qpcb,qpcr,pred_mode,ctu_size");
-  }
-  buffer[bi] = '\n';
+  dump_csv_header(buffer, BUFSIZE, &bi, procmode);
   fprintf(fout, buffer);
 
   bool stop = false;

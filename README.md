@@ -1,143 +1,80 @@
+# libde265 qpextract
 
-libde265 - open h.265 codec implementation
-==========================================
+This repo is a fork from an old version of [libde265](https://github.com/strukturag/libde265). In particular, it adds a tool called "`qpextract`" that allows understanding 3x information items from h265/HEVC raw bitstreams (Annex B):
 
-![libde265](libde265.png)
+* (1) QP values: This includes `QP_Y`, `QP_Cr`, and `QP_Cb`.
+* (2) CTU sizes.
+* (3) Prediction modes.
 
-libde265 is an open source implementation of the h.265 video codec.
-It is written from scratch and has a plain C API to enable
-a simple integration into other software.
+The information produced is a per-frame distribution of all the values.
 
-libde265 supports WPP and tile-based multithreading and includes SSE optimizations.
-The decoder includes all features of the Main profile and correctly decodes almost all
-conformance streams (see [[wiki page](https://github.com/strukturag/libde265/wiki/Decoder-conformance)]).
-
-A list of supported features are available in the [wiki](https://github.com/strukturag/libde265/wiki/Supported-decoding-features).
-
-For latest news check our website at http://www.libde265.org
-
-The library comes with two example programs:
-
-- dec265, a simple player for raw h.265 bitstreams.
-          It serves nicely as an example program how to use libde265.
-
-- sherlock265, a Qt-based video player with the additional capability
-          to overlay some graphical representations of the h.265
-          bitstream (like CU-trees, intra-prediction modes).
-
-Example bitstreams can be found, e.g., at this site:
-  ftp://ftp.kw.bbc.co.uk/hevc/hm-10.1-anchors/bitstreams/ra_main/
-
-Approximate performance for WPP, non-tiles streams (measured using the `timehevc`
-tool from [the GStreamer plugin](https://github.com/strukturag/gstreamer-libde265)).
-The tool plays a Matroska movie to the GStreamer fakesink and measures
-the average framerate.
-
-| Resolution        | avg. fps | CPU usage |
-| ----------------- | -------- | --------- |
-| [720p][1]         |  284 fps |      39 % |
-| [1080p][2]        |  150 fps |      45 % |
-| [4K][3]           |   36 fps |      56 % |
-
-Environment:
-- Intel(R) Core(TM) i7-2700K CPU @ 3.50GHz (4 physical CPU cores)
-- Ubuntu 12.04, 64bit
-- GStreamer 0.10.36
-
-[1]: http://trailers.divx.com/hevc/TearsOfSteel_720p_24fps_27qp_831kbps_720p_GPSNR_41.65_HM11_2aud_7subs.mkv
-[2]: http://trailers.divx.com/hevc/TearsOfSteel_1080p_24fps_27qp_1474kbps_GPSNR_42.29_HM11_2aud_7subs.mkv
-[3]: http://trailers.divx.com/hevc/TearsOfSteel_4K_24fps_9500kbps_2aud_9subs.mkv
+We provide results both weighted (CUs are weighted by their sizes, so e.g. the QP for a 64x64 CU is considered 4x times in the average when compared to a 32x32 CU) and unweighted (all CUs weighted the same).
 
 
-Building
-========
+# Operation
 
-[![Build Status](https://travis-ci.org/strukturag/libde265.png?branch=master)](https://travis-ci.org/strukturag/libde265) [![Build Status](https://ci.appveyor.com/api/projects/status/github/strukturag/libde265?svg=true)](https://ci.appveyor.com/project/strukturag/libde265)
-
-If you got libde265 from the git repository, you will first need to run
-the included `autogen.sh` script to generate the `configure` script.
-
-libde265 has no dependencies on other libraries, but both optional example programs
-have dependencies on:
-
-- SDL (optional for dec265's YUV overlay output),
-
-- Qt (required for sherlock265),
-
-- libswscale (required for sherlock265 if libvideogfx is not available).
-
-- libvideogfx (required for sherlock265 if libswscale is not available,
-  optional for dec265).
-
-Libvideogfx can be obtained from
-  http://www.dirk-farin.net/software/libvideogfx/index.html
-or
-  http://github.com/farindk/libvideogfx
-
-
-You can disable building of the example programs by running `./configure` with
-<pre>
-  --disable-dec265        Do not build the dec265 decoder program.
-  --disable-sherlock265   Do not build the sherlock265 visual inspection program.
-</pre>
-
-Additional logging information can be turned on and off using these `./configure` flags:
-<pre>
-  --enable-log-error      turn on logging at error level (default=yes)
-  --enable-log-info       turn on logging at info level (default=no)
-  --enable-log-trace      turn on logging at trace level (default=no)
-</pre>
-
-
-Build using cmake
-=================
-
-cmake scripts to build libde265 and the sample scripts `dec265` and `enc265` are
-included and can be compiled using these commands:
-
+(1) build from the qpextract branch
 ```
-mkdir build
-cd build
-cmake ..
-make
+$ git clone https://github.com/chemag/libde265
+$ cd libde265
+$ ./autogen.sh
+$ ./configure --enable-sherlock265
+$ make -j
 ```
 
-See the [cmake documentation](http://www.cmake.org) for further information on
-using cmake on other platforms.
+(2) analyze an Annex B file. Note that we use [csvkit](https://csvkit.readthedocs.io/en/latest) to slice and present the data.
+```
+$ tools/qpextract -i tears_400_x265.h265  | csvcut -c frame,qp_num,qp_min,qp_max,qp_avg,qp_stddev,qpw_num,qpw_min,qpw_max,qpw_avg,qpw_stddev | csvlook -I
+| frame | qp_num | qp_min | qp_max | qp_avg    | qp_stddev | qpw_num | qpw_min | qpw_max | qpw_avg   | qpw_stddev |
+| ----- | ------ | ------ | ------ | --------- | --------- | ------- | ------- | ------- | --------- | ---------- |
+| 0     | 1563   | 29     | 34     | 30.872681 | 1.282208  | 1536000 | 29      | 34      | 31.115833 | 1.307701   |
+| 1     | 981    | 32     | 40     | 33.895005 | 1.199807  | 1536000 | 32      | 40      | 34.074583 | 1.204825   |
+| 2     | 567    | 38     | 41     | 38.941799 | 0.915359  | 1536000 | 38      | 41      | 38.864500 | 0.880420   |
+| 3     | 486    | 39     | 42     | 40.518519 | 0.995187  | 1536000 | 39      | 42      | 40.447000 | 1.019407   |
+| 4     | 459    | 39     | 42     | 40.366013 | 0.927091  | 1536000 | 39      | 42      | 40.319000 | 0.934473   |
+| 5     | 438    | 39     | 42     | 40.826484 | 1.041176  | 1536000 | 39      | 42      | 40.813333 | 1.076331   |
+| 6     | 1029   | 32     | 40     | 34.125364 | 1.218910  | 1536000 | 32      | 40      | 34.409875 | 1.411073   |
+...
+| 332   | 480    | 38     | 41     | 40.372917 | 0.998173  | 1536000 | 38      | 41      | 40.549333 | 0.933577   |
+| 333   | 495    | 38     | 41     | 39.846465 | 1.236100  | 1536000 | 38      | 41      | 39.978333 | 1.228223   |
+| 334   | 444    | 38     | 41     | 40.238739 | 1.139675  | 1536000 | 38      | 41      | 40.478667 | 1.004097   |
+```
+
+Each line contains the frame ID, and the distribution of the QP values for the frame (number, min, max, avg, stddev). Values are both non-weighted (all CUs weighted the same) and weighted (CUs are weighted by their size, so the QP for a 64x64 CU is considered 4x times in the average when compared to a 32x32 CU)).
+
+For example, the second line corresponds to frame 1, and has 981 CUs, with an average of 33.89 QP value. The full histogram is also in the output (removed here).
+
+Note that the original CSV files shows the full details of the CSV distribution (e.g. how many CUs had QP 33).
 
 
-Prebuilt binaries
-=================
+# Other Options
 
-Binary packages can be obtained from this [launchpad site](https://launchpad.net/~strukturag/+archive/libde265).
+The default CLI arguments will produce the distribution of the luminance QP values. The tool can also produce the distribution of:
+* chrominance (Cb or Cr) QP values
+* prediction modes
+* CTU mode (plain distribution of CUs)
 
+See the help output:
+```
+$ tools/qpextract --help
+# qpextract  v1.0.3
+usage: /home/chemag/proj/libde265/tools/.libs/qpextract [options] -i videofile.bin [-o output.csv]
+The video file must be a raw bitstream, or a stream with NAL units (option -n).
 
-Software using libde265
-=======================
-
-Libde265 has been integrated into these applications:
-
-- gstreamer plugin, [source](https://github.com/strukturag/gstreamer-libde265), [binary packages](https://launchpad.net/~strukturag/+archive/libde265).
-
-- VLC plugin [source](https://github.com/strukturag/vlc-libde265), [binary packages](https://launchpad.net/~strukturag/+archive/libde265).
-
-- Windows DirectShow filters, https://github.com/strukturag/LAVFilters/releases
-
-- ffmpeg fork, https://github.com/farindk/ffmpeg
-
-- ffmpeg decoder [source](https://github.com/strukturag/libde265-ffmpeg)
-
-- libde265.js JavaScript decoder [source](https://github.com/strukturag/libde265.js), [demo](https://strukturag.github.io/libde265.js/).
-
-
-License
-=======
-
-The library `libde265` is distributed under the terms of the GNU Lesser
-General Public License. The sample applications are distributed under
-the terms of the MIT license.
-
-See `COPYING` for more details.
-
-Copyright (c) 2013-2014 Struktur AG
-Contact: Dirk Farin <farin@struktur.de>
+options:
+  -c, --check-hash  perform hash check
+  -n, --nal         input is a stream with 4-byte length prefixed NAL units
+  -d, --dump        dump headers
+  -T, --highest-TID select highest temporal sublayer to decode
+      --disable-deblocking   disable deblocking filter
+      --disable-sao          disable sample-adaptive offset filter
+  -q, --min-qp      minimum QP for CSV dump
+  -Q, --max-qp      maximum QP for CSV dump
+  --qpymode         QPY mode (get the distribution of QP Y values)
+  --qpcbmode        QPCb mode (get the distribution of QP Cb values)
+  --qpcrmode        QPCr mode (get the distribution of QP Cr values)
+  -p, --predmode    pred mode (get the distribution of prediction modes)
+  --ctumode         ctu mode (get the distribution of CTUs)
+  --fullmode        full mode (get full QP, pred, CTU info)
+  -h, --help        show help
+```

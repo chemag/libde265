@@ -300,7 +300,7 @@ void get_qp_statistics(int* qp_distro, int* qp_num,
   *qp_num = 0;
 
   // sum all the qp values
-  for (int qp = MIN_QP_VALUE; qp <= MAX_QP_VALUE; qp++) {
+  for (int qp = MIN_QP_VALUE; qp < MAX_QP_VALUE; qp++) {
     qp_sum += qp * qp_distro[qp];
     *qp_num += qp_distro[qp];
   }
@@ -308,7 +308,7 @@ void get_qp_statistics(int* qp_distro, int* qp_num,
   *qp_avg = (double)qp_sum / (*qp_num);
   // get the stddev
   double qp_sumsquare = 0;
-  for (int qp = MIN_QP_VALUE; qp <= MAX_QP_VALUE; qp++) {
+  for (int qp = MIN_QP_VALUE; qp < MAX_QP_VALUE; qp++) {
     double diff = qp - *qp_avg;
     qp_sumsquare += (diff) * (diff)*qp_distro[qp];
   }

@@ -333,8 +333,8 @@ void dump_csv_header(char* buffer, int bufsize, int* bi, Procmode procmode) {
                    "intraw,interw,skipw,intraw_ratio,interw_ratio,skipw_ratio");
   } else if (procmode == ctumode) {
     *bi += snprintf(buffer + *bi, bufsize - *bi,
-                   "frame,ctu8,ctu16,ctu32,ctu64,cut8_ratio,ctu16_ratio,ctu32_"
-                   "ratio,ctu64_ratio,ctu8w,ctu16w,ctu32w,ctu64w,cut8w_ratio,"
+                   "frame,ctu8,ctu16,ctu32,ctu64,ctu8_ratio,ctu16_ratio,ctu32_"
+                   "ratio,ctu64_ratio,ctu8w,ctu16w,ctu32w,ctu64w,ctu8w_ratio,"
                    "ctu16w_ratio,ctu32w_ratio,ctu64w_ratio");
   } else if (procmode == fullmode) {
     *bi += snprintf(buffer + *bi, bufsize - *bi,

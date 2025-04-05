@@ -54,7 +54,7 @@
 #define BUFFER_SIZE 40960
 #define BUFSIZE BUFFER_SIZE
 
-enum Procmode { qpymode, qpcbmode, qpcrmode, predmode, ctumode, allmode, fullmode };
+enum Procmode { qpymode, qpcbmode, qpcrmode, predmode, ctumode, allmode, blockmode };
 
 bool nal_input = false;
 bool check_hash = false;
@@ -85,7 +85,7 @@ enum {
   CTUMODE_OPTION,
   PREDMODE_OPTION,
   ALLMODE_OPTION,
-  FULLMODE_OPTION,
+  BLOCKMODE_OPTION,
 };
 
 static struct option long_options[] = {
@@ -110,7 +110,7 @@ static struct option long_options[] = {
     {"ctumode", no_argument, nullptr, CTUMODE_OPTION},
     {"predmode", no_argument, nullptr, PREDMODE_OPTION},
     {"allmode", no_argument, nullptr, ALLMODE_OPTION},
-    {"fullmode", no_argument, nullptr, FULLMODE_OPTION},
+    {"blockmode", no_argument, nullptr, BLOCKMODE_OPTION},
     {"max-qp", required_argument, nullptr, 'Q'},
     {"min-qp", required_argument, nullptr, 'q'},
     {0, 0, 0, 0},
@@ -395,7 +395,7 @@ void dump_csv_header(char* buffer, int bufsize, int* bi, Procmode procmode) {
     dump_csv_qp_header(buffer, bufsize, bi, qpcrmode);
     dump_csv_pred_header(buffer, bufsize, bi);
     dump_csv_ctu_header(buffer, bufsize, bi);
-  } else if (procmode == fullmode) {
+  } else if (procmode == blockmode) {
     *bi += snprintf(buffer + *bi, bufsize - *bi,
                    "xb,yb,size,qpy,qpcb,qpcr,pred_mode,ctu_size");
   }
@@ -544,7 +544,7 @@ void dump_ctu_distro(de265_image* img) {
   fprintf(fout, buffer);
 }
 
-void dump_full(de265_image* img) {
+void dump_block_info(de265_image* img) {
   char buffer[BUFSIZE] = {};
   int bi = 0;
 
@@ -608,8 +608,8 @@ void dump_image(de265_image* img) {
     dump_image_pred(img);
     fprintf(fout, ",");
     dump_ctu_distro(img);
-  } else if (procmode == fullmode) {
-    dump_full(img);
+  } else if (procmode == blockmode) {
+    dump_block_info(img);
   }
   // finish the line
   fprintf(fout, "\n");
@@ -653,7 +653,7 @@ void usage(char* argv0) {
   fprintf(stderr,
           "  --allmode         all mode (get QPY, QPCb, QPCr, pred, CTU info)\n");
   fprintf(stderr,
-          "  --fullmode        full mode (get per-block info)\n");
+          "  --blockmode       block mode (get per-block info)\n");
   fprintf(stderr, "  -h, --help        show help\n");
 }
 
@@ -748,8 +748,8 @@ int main(int argc, char** argv) {
       case ALLMODE_OPTION:
         procmode = allmode;
         break;
-      case FULLMODE_OPTION:
-        procmode = fullmode;
+      case BLOCKMODE_OPTION:
+        procmode = blockmode;
         break;
     }
   }

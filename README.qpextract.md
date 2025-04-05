@@ -76,6 +76,6 @@ options:
   --predmode        pred mode (get the distribution of prediction modes)
   --ctumode         ctu mode (get the distribution of CTUs)
   --allmode         all mode (get QPY, QPCb, QPCr, pred, CTU info)
-  --fullmode        full mode (get per-block info)
+  --blockmode       block mode (get per-block info)
   -h, --help        show help
 ```

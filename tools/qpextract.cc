@@ -37,6 +37,7 @@
 
 #include <climits>
 #include <limits>
+#include <vector>
 #ifdef HAVE_MALLOC_H
 #include <malloc.h>
 #endif
@@ -47,11 +48,13 @@
 #include <unistd.h>
 #endif
 
+
 #include "libde265/quality.h"
 
 #define BUFFER_SIZE 40960
+#define BUFSIZE BUFFER_SIZE
 
-enum Procmode { qpymode, qpcbmode, qpcrmode, predmode, ctumode, fullmode };
+enum Procmode { qpymode, qpcbmode, qpcrmode, predmode, ctumode, allmode, fullmode };
 
 bool nal_input = false;
 bool check_hash = false;
@@ -80,6 +83,7 @@ enum {
   QPCBMODE_OPTION,
   QPCRMODE_OPTION,
   CTUMODE_OPTION,
+  ALLMODE_OPTION,
   FULLMODE_OPTION,
 };
 
@@ -104,6 +108,7 @@ static struct option long_options[] = {
     {"qpcbmode", no_argument, nullptr, QPCBMODE_OPTION},
     {"qpcrmode", no_argument, nullptr, QPCRMODE_OPTION},
     {"ctumode", no_argument, nullptr, CTUMODE_OPTION},
+    {"allmode", no_argument, nullptr, ALLMODE_OPTION},
     {"fullmode", no_argument, nullptr, FULLMODE_OPTION},
     {"max-qp", required_argument, nullptr, 'Q'},
     {"min-qp", required_argument, nullptr, 'q'},
@@ -315,38 +320,101 @@ void get_qp_statistics(int* qp_distro, int* qp_num,
   *qp_stddev = sqrt(qp_sumsquare / (*qp_num));
 }
 
+
+void dump_csv_qp_header(char* buffer, int bufsize, int* bi, Procmode procmode) {
+  char prefix[5];
+  if (procmode == qpymode) {
+    strcpy(prefix, "qpy");
+  } else if (procmode == qpcbmode) {
+    strcpy(prefix, "qpcb");
+  } else if (procmode == qpcrmode) {
+    strcpy(prefix, "qpcr");
+  }
+
+  std::vector<std::string> qp_header_vector = {"num", "min", "max", "avg", "stddev"};
+  for (const auto & header : qp_header_vector) {
+    *bi += snprintf(buffer + *bi, bufsize - *bi,
+                   ",%s.%s", prefix, header.c_str());
+  }
+  for (const auto & header : qp_header_vector) {
+    *bi += snprintf(buffer + *bi, bufsize - *bi,
+                   ",%s.weighted.%s", prefix, header.c_str());
+  }
+  for (int qp = minPrintedQP; qp <= maxPrintedQP; qp++) {
+    *bi += snprintf(buffer + *bi, bufsize - *bi, ",%s.%i", prefix, qp);
+  }
+  for (int qp = minPrintedQP; qp <= maxPrintedQP; qp++) {
+    *bi += snprintf(buffer + *bi, bufsize - *bi, ",%s.weighted.%i", prefix, qp);
+  }
+}
+
+
+void dump_csv_pred_header(char* buffer, int bufsize, int* bi) {
+  const char* prefix = "pred";
+
+  std::vector<std::string> pred_header_vector = {"intra", "inter", "skip", "intra_ratio", "inter_ratio", "skip_ratio"};
+  for (const auto & header : pred_header_vector) {
+    *bi += snprintf(buffer + *bi, bufsize - *bi,
+                   ",%s.%s", prefix, header.c_str());
+  }
+  for (const auto & header : pred_header_vector) {
+    *bi += snprintf(buffer + *bi, bufsize - *bi,
+                   ",%s.weighted.%s", prefix, header.c_str());
+  }
+}
+
+void dump_csv_ctu_header(char* buffer, int bufsize, int* bi) {
+  const char* prefix = "ctu";
+
+  std::vector<std::string> ctu_header_vector = {"ctu8", "ctu16", "ctu32", "ctu64", "ctu8_ratio", "ctu16_ratio", "ctu32_ratio", "ctu64_ratio",};
+  for (const auto & header : ctu_header_vector) {
+    *bi += snprintf(buffer + *bi, bufsize - *bi,
+                   ",%s.%s", prefix, header.c_str());
+  }
+  for (const auto & header : ctu_header_vector) {
+    *bi += snprintf(buffer + *bi, bufsize - *bi,
+                   ",%s.weighted.%s", prefix, header.c_str());
+  }
+}
+
+
 void dump_csv_header(char* buffer, int bufsize, int* bi, Procmode procmode) {
+  *bi += snprintf(buffer + *bi, bufsize - *bi,
+                  "frame");
   if ((procmode == qpymode) || (procmode == qpcbmode) ||
       (procmode == qpcrmode)) {
-    *bi += snprintf(buffer + *bi, bufsize - *bi,
-                   "frame,qp_num,qp_min,qp_max,qp_avg,qp_stddev,"
-                   "qpw_num,qpw_min,qpw_max,qpw_avg,qpw_stddev");
-    for (int qp = minPrintedQP; qp <= maxPrintedQP; qp++) {
-      *bi += snprintf(buffer + *bi, bufsize - *bi, ",%i", qp);
-    }
-    for (int qp = minPrintedQP; qp <= maxPrintedQP; qp++) {
-      *bi += snprintf(buffer + *bi, bufsize - *bi, ",%iw", qp);
-    }
+    dump_csv_qp_header(buffer, bufsize, bi, procmode);
   } else if (procmode == predmode) {
-    *bi += snprintf(buffer + *bi, bufsize - *bi,
-                   "frame,intra,inter,skip,intra_ratio,inter_ratio,skip_ratio,"
-                   "intraw,interw,skipw,intraw_ratio,interw_ratio,skipw_ratio");
+    dump_csv_pred_header(buffer, bufsize, bi);
   } else if (procmode == ctumode) {
-    *bi += snprintf(buffer + *bi, bufsize - *bi,
-                   "frame,ctu8,ctu16,ctu32,ctu64,ctu8_ratio,ctu16_ratio,ctu32_"
-                   "ratio,ctu64_ratio,ctu8w,ctu16w,ctu32w,ctu64w,ctu8w_ratio,"
-                   "ctu16w_ratio,ctu32w_ratio,ctu64w_ratio");
+    dump_csv_ctu_header(buffer, bufsize, bi);
+  } else if (procmode == allmode) {
+    dump_csv_qp_header(buffer, bufsize, bi, qpymode);
+    dump_csv_qp_header(buffer, bufsize, bi, qpcbmode);
+    dump_csv_qp_header(buffer, bufsize, bi, qpcrmode);
+    dump_csv_pred_header(buffer, bufsize, bi);
+    dump_csv_ctu_header(buffer, bufsize, bi);
   } else if (procmode == fullmode) {
     *bi += snprintf(buffer + *bi, bufsize - *bi,
-                   "frame,xb,yb,size,qpy,qpcb,qpcr,pred_mode,ctu_size");
+                   "xb,yb,size,qpy,qpcb,qpcr,pred_mode,ctu_size");
   }
-  buffer[*bi] = '\n';
+  *bi += snprintf(buffer + *bi, bufsize - *bi, "\n");
+}
+
+
+void dump_image_frame_number(de265_image* img) {
+  char buffer[BUFSIZE] = {};
+  int bi = 0;
+
+  // dump frame number
+  bi += snprintf(buffer + bi, BUFSIZE - bi, "%i,", img->get_ID());
+  buffer[bi - 1] = '\0';
+  fprintf(fout, buffer);
 }
 
 
 // gets the QP distribution of a frame, and dumps it
 void dump_image_qp(de265_image* img, Procmode procmode) {
-#define BUFSIZE 1024
   char buffer[BUFSIZE] = {};
   int bi = 0;
 
@@ -356,9 +424,6 @@ void dump_image_qp(de265_image* img, Procmode procmode) {
   int qp_max = -1;
   int qp_min = -1;
   get_qp_distro(img, qp_distro, qp_distro_weighted, &qp_max, &qp_min, procmode);
-
-  // dump frame number
-  bi += snprintf(buffer + bi, BUFSIZE - bi, "%i,", img->get_ID());
 
   // get QP statistics
   int qp_num = 0;
@@ -379,10 +444,10 @@ void dump_image_qp(de265_image* img, Procmode procmode) {
 
   // dump QP distro
   if (qp_max > maxPrintedQP) {
-    fprintf(stderr, "error: will only dump QP values until %d, but there is up to %d. Consider adding \"--max-qp %d\"\n", maxPrintedQP, qp_max, qp_max);
+    fprintf(stderr, "error: will only dump QP values until %d, but there is up to %d in frame %i. Consider adding \"--max-qp %d\"\n", maxPrintedQP, qp_max, qp_max, img->get_ID());
   }
   if (qp_min < minPrintedQP) {
-    fprintf(stderr, "error: will only dump QP values until %d, but there is up to %d. Consider adding \"--min-qp %d\"\n", minPrintedQP, qp_min, qp_min);
+    fprintf(stderr, "error: will only dump QP values until %d, but there is up to %d in frame %i. Consider adding \"--min-qp %d\"\n", minPrintedQP, qp_min, qp_min, img->get_ID());
   }
 
   for (int qp = minPrintedQP; qp <= maxPrintedQP; qp++) {
@@ -393,12 +458,11 @@ void dump_image_qp(de265_image* img, Procmode procmode) {
   for (int qp = minPrintedQP; qp <= maxPrintedQP; qp++) {
     bi += snprintf(buffer + bi, BUFSIZE - bi, "%i,", qp_distro_weighted[qp]);
   }
-  buffer[bi - 1] = '\n';
+  buffer[bi - 1] = '\0';
   fprintf(fout, buffer);
 }
 
 void dump_image_pred(de265_image* img) {
-#define BUFSIZE 1024
   char buffer[BUFSIZE] = {};
   int bi = 0;
 
@@ -406,9 +470,6 @@ void dump_image_pred(de265_image* img) {
   int pred_distro[MAX_PRED_MODES] = {0};
   int pred_distro_weighted[MAX_PRED_MODES] = {0};
   get_pred_distro(img, pred_distro, pred_distro_weighted);
-
-  // dump frame number
-  bi += snprintf(buffer + bi, BUFSIZE - bi, "%i,", img->get_ID());
 
   // dump PredMode distro
   int sum = 0;
@@ -437,13 +498,12 @@ void dump_image_pred(de265_image* img) {
     bi += snprintf(buffer + bi, BUFSIZE - bi, "%f,", ratio);
   }
 
-  buffer[bi - 1] = '\n';
+  buffer[bi - 1] = '\0';
   fprintf(fout, buffer);
 }
 
 // ctumode
 void dump_ctu_distro(de265_image* img) {
-#define BUFSIZE 1024
   char buffer[BUFSIZE] = {};
   int bi = 0;
 
@@ -451,9 +511,6 @@ void dump_ctu_distro(de265_image* img) {
   int ctu_distro[MAX_CTU_VALUES] = {0};
   int ctu_distro_weighted[MAX_CTU_VALUES] = {0};
   get_ctu_distro(img, ctu_distro, ctu_distro_weighted);
-
-  // dump frame number
-  bi += snprintf(buffer + bi, BUFSIZE - bi, "%i,", img->get_ID());
 
   // dump CTU distro
   int sum = 0;
@@ -482,7 +539,7 @@ void dump_ctu_distro(de265_image* img) {
     bi += snprintf(buffer + bi, BUFSIZE - bi, "%f,", ratio);
   }
 
-  buffer[bi - 1] = '\n';
+  buffer[bi - 1] = '\0';
   fprintf(fout, buffer);
 }
 
@@ -530,6 +587,9 @@ void dump_full(de265_image* img) {
 }
 
 void dump_image(de265_image* img) {
+  // start the line
+  dump_image_frame_number(img);
+  fprintf(fout, ",");
   if ((procmode == qpymode) || (procmode == qpcbmode) ||
       (procmode == qpcrmode)) {
     dump_image_qp(img, procmode);
@@ -537,9 +597,21 @@ void dump_image(de265_image* img) {
     dump_image_pred(img);
   } else if (procmode == ctumode) {
     dump_ctu_distro(img);
+  } else if (procmode == allmode) {
+    dump_image_qp(img, qpymode);
+    fprintf(fout, ",");
+    dump_image_qp(img, qpcbmode);
+    fprintf(fout, ",");
+    dump_image_qp(img, qpcrmode);
+    fprintf(fout, ",");
+    dump_image_pred(img);
+    fprintf(fout, ",");
+    dump_ctu_distro(img);
   } else if (procmode == fullmode) {
     dump_full(img);
   }
+  // finish the line
+  fprintf(fout, "\n");
 }
 
 void usage(char* argv0) {
@@ -579,7 +651,9 @@ void usage(char* argv0) {
   fprintf(stderr,
           "  --ctumode         ctu mode (get the distribution of CTUs)\n");
   fprintf(stderr,
-          "  --fullmode        full mode (get full QP, pred, CTU info)\n");
+          "  --allmode         all mode (get QPY, QPCb, QPCr, pred, CTU info)\n");
+  fprintf(stderr,
+          "  --fullmode        full mode (get per-block info)\n");
   fprintf(stderr, "  -h, --help        show help\n");
 }
 
@@ -671,6 +745,9 @@ int main(int argc, char** argv) {
       case CTUMODE_OPTION:
         procmode = ctumode;
         break;
+      case ALLMODE_OPTION:
+        procmode = allmode;
+        break;
       case FULLMODE_OPTION:
         procmode = fullmode;
         break;
@@ -750,7 +827,6 @@ int main(int argc, char** argv) {
   }
 
   // dump the CSV header
-#define BUFSIZE 1024
   char buffer[BUFSIZE] = {};
   int bi = 0;
   dump_csv_header(buffer, BUFSIZE, &bi, procmode);

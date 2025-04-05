@@ -57,7 +57,7 @@ The default CLI arguments will produce the distribution of the luminance QP valu
 See the help output:
 ```
 $ tools/qpextract --help
-# qpextract  v1.0.3
+# qpextract  v1.0.15
 usage: /home/chemag/proj/libde265/tools/.libs/qpextract [options] -i videofile.bin [-o output.csv]
 The video file must be a raw bitstream, or a stream with NAL units (option -n).
 
@@ -73,8 +73,9 @@ options:
   --qpymode         QPY mode (get the distribution of QP Y values)
   --qpcbmode        QPCb mode (get the distribution of QP Cb values)
   --qpcrmode        QPCr mode (get the distribution of QP Cr values)
-  -p, --predmode    pred mode (get the distribution of prediction modes)
+  --predmode        pred mode (get the distribution of prediction modes)
   --ctumode         ctu mode (get the distribution of CTUs)
-  --fullmode        full mode (get full QP, pred, CTU info)
+  --allmode         all mode (get QPY, QPCb, QPCr, pred, CTU info)
+  --fullmode        full mode (get per-block info)
   -h, --help        show help
 ```

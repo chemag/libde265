@@ -83,13 +83,13 @@ enum {
   QPCBMODE_OPTION,
   QPCRMODE_OPTION,
   CTUMODE_OPTION,
+  PREDMODE_OPTION,
   ALLMODE_OPTION,
   FULLMODE_OPTION,
 };
 
 static struct option long_options[] = {
     {"check-hash", no_argument, nullptr, 'c'},
-    {"predmode", no_argument, nullptr, 'p'},
     {"frames", required_argument, nullptr, 'f'},
     {"infile", required_argument, nullptr, 'i'},
     {"outfile", required_argument, nullptr, 'o'},
@@ -108,6 +108,7 @@ static struct option long_options[] = {
     {"qpcbmode", no_argument, nullptr, QPCBMODE_OPTION},
     {"qpcrmode", no_argument, nullptr, QPCRMODE_OPTION},
     {"ctumode", no_argument, nullptr, CTUMODE_OPTION},
+    {"predmode", no_argument, nullptr, PREDMODE_OPTION},
     {"allmode", no_argument, nullptr, ALLMODE_OPTION},
     {"fullmode", no_argument, nullptr, FULLMODE_OPTION},
     {"max-qp", required_argument, nullptr, 'Q'},
@@ -646,8 +647,7 @@ void usage(char* argv0) {
       stderr,
       "  --qpcrmode        QPCr mode (get the distribution of QP Cr values)\n");
   fprintf(stderr,
-          "  -p, --predmode    pred mode (get the distribution of prediction "
-          "modes)\n");
+          "  --predmode    pred mode (get the distribution of prediction modes)\n");
   fprintf(stderr,
           "  --ctumode         ctu mode (get the distribution of CTUs)\n");
   fprintf(stderr,
@@ -690,9 +690,6 @@ int main(int argc, char** argv) {
         break;
       case 'L':
         logging = false;
-        break;
-      case 'p':
-        procmode = predmode;
         break;
       case '0':
         no_acceleration = true;
@@ -744,6 +741,9 @@ int main(int argc, char** argv) {
         break;
       case CTUMODE_OPTION:
         procmode = ctumode;
+        break;
+      case PREDMODE_OPTION:
+        procmode = predmode;
         break;
       case ALLMODE_OPTION:
         procmode = allmode;

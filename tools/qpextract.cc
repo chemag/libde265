@@ -66,7 +66,7 @@ const char* reference_filename;
 int highestTID = 100;
 int maxPrintedQP = 63;
 int minPrintedQP = 0;
-Procmode procmode = qpymode;
+Procmode procmode = allmode;
 int verbosity = 0;
 int disable_deblocking = 0;
 int disable_sao = 0;

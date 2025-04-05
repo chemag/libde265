@@ -48,6 +48,8 @@ libde265.pc
 /test-suite.log
 /build
 /_build
+.deps
+.dirstamp
 
 # ctags
 tags
@@ -57,6 +59,7 @@ acceleration-speed/acceleration_speed
 dec265/dec265
 dec265/hdrcopy
 enc265/enc265
+libde265.pc
 libde265/de265-version.h
 sherlock265/sherlock265
 tools/bjoentegaard

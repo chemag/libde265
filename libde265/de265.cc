@@ -491,6 +491,18 @@ LIBDE265_API int  de265_change_framerate(de265_decoder_context* de265ctx,int mor
   return ctx->change_framerate(more);
 }
 
+LIBDE265_API void  de265_callback_register(de265_decoder_context* de265ctx, de265_callback_block* cbb)
+{
+  decoder_context* ctx = (decoder_context*)de265ctx;
+  ctx->callback_register(cbb);
+}
+
+LIBDE265_API void  de265_callback_unregister(de265_decoder_context* de265ctx)
+{
+  decoder_context* ctx = (decoder_context*)de265ctx;
+  ctx->callback_unregister();
+}
+
 
 LIBDE265_API de265_error de265_get_warning(de265_decoder_context* de265ctx)
 {

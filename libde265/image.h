@@ -210,6 +210,8 @@ typedef struct {
 
   // --- byte boundary ---
   int8_t  QP_Y;  // Stored for QP prediction
+  int8_t  QP_Cb;  // Stored for QP_Cb prediction
+  int8_t  QP_Cr;  // Stored for QP_Cr prediction
 
 } CB_ref_info;
 
@@ -583,6 +585,26 @@ public:
   int  get_QPY(int x0,int y0) const
   {
     return cb_info.get(x0,y0).QP_Y;
+  }
+
+  void set_QPCb(int x,int y, int log2BlkWidth, int QP_Cb)
+  {
+    SET_CB_BLK (x, y, log2BlkWidth, QP_Cb, QP_Cb);
+  }
+
+  int  get_QPCb(int x0,int y0) const
+  {
+    return cb_info.get(x0,y0).QP_Cb;
+  }
+
+  void set_QPCr(int x,int y, int log2BlkWidth, int QP_Cr)
+  {
+    SET_CB_BLK (x, y, log2BlkWidth, QP_Cr, QP_Cr);
+  }
+
+  int  get_QPCr(int x0,int y0) const
+  {
+    return cb_info.get(x0,y0).QP_Cr;
   }
 
   // --- TU metadata access ---

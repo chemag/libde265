@@ -66,6 +66,11 @@ extern "C" {
 #define LIBDE265_INLINE inline
 #endif
 
+class decoder_context;
+class pic_parameter_set;
+class video_parameter_set;
+class seq_parameter_set;
+
 /* === version numbers === */
 
 // version of linked libde265 library
@@ -402,6 +407,20 @@ enum de265_param {
   //DE265_DECODER_PARAM_DISABLE_MC_RESIDUAL_IDCT=9,     // (bool)  disable decoding of IDCT residuals in MC blocks
   //DE265_DECODER_PARAM_DISABLE_INTRA_RESIDUAL_IDCT=10  // (bool)  disable decoding of IDCT residuals in MC blocks
 };
+
+/* --- callback --- */
+struct de265_callback_block
+{
+  void  (*get_vps)(video_parameter_set* vps);
+  void  (*get_sps)(seq_parameter_set* sps);
+  void  (*get_pps)(pic_parameter_set* pps);
+  void  (*get_image)(de265_image* img);
+};
+LIBDE265_API void de265_callback_register(de265_decoder_context*, de265_callback_block*);
+LIBDE265_API void de265_callback_unregister(de265_decoder_context*);
+
+/* The user data pointer will be given to the get_buffer() and release_buffer() functions
+   in de265_image_allocation. */
 
 // sorted such that a large ID includes all optimizations from lower IDs
 enum de265_acceleration {

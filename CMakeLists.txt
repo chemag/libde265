@@ -1,4 +1,4 @@
-cmake_minimum_required (VERSION 3.3.2)
+cmake_minimum_required (VERSION 3.10)
 
 project (libde265
     LANGUAGES C CXX
@@ -79,9 +79,4 @@ if (ENABLE_ENCODER)
   add_subdirectory (enc265)
 endif()
 
-#build qpextract
-add_executable(qpextract ${PROJECT_SOURCE_DIR}/tools/qpextract.cc)
-target_include_directories(qpextract
-  PRIVATE ${PROJECT_SOURCE_DIR}/libde265
-)
-target_link_libraries(qpextract ${LIBDE265_LIBRARY_NAME})
+add_subdirectory(tools)

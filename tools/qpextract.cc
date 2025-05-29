@@ -646,15 +646,21 @@ void usage(char* argv0) {
   fprintf(
       stderr,
       "  --qpcrmode        QPCr mode (get the distribution of QP Cr values)\n");
-  fprintf(stderr,
-          "  --predmode    pred mode (get the distribution of prediction modes)\n");
-  fprintf(stderr,
-          "  --ctumode         ctu mode (get the distribution of CTUs)\n");
-  fprintf(stderr,
-          "  --allmode         all mode (get QPY, QPCb, QPCr, pred, CTU info)\n");
-  fprintf(stderr,
-          "  --blockmode       block mode (get per-block info)\n");
-  fprintf(stderr, "  -h, --help        show help\n");
+  fprintf(
+      stderr,
+      "  --predmode        pred mode (get the distribution of prediction modes)\n");
+  fprintf(
+      stderr,
+      "  --ctumode         ctu mode (get the distribution of CTUs)\n");
+  fprintf(
+      stderr,
+      "  --allmode         all mode (get QPY, QPCb, QPCr, pred, CTU info) [default]\n");
+  fprintf(
+      stderr,
+      "  --blockmode       block mode (get per-block info)\n");
+  fprintf(
+      stderr,
+      "  -h, --help        show help\n");
 }
 
 int main(int argc, char** argv) {

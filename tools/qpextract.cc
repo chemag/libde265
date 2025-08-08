@@ -322,7 +322,8 @@ void get_qp_statistics(int* qp_distro, int* qp_num,
 }
 
 
-void dump_csv_qp_header(char* buffer, int bufsize, int* bi, Procmode procmode) {
+int dump_csv_qp_header(char* buffer, int bufsize, Procmode procmode) {
+  int bi = 0;
   char prefix[5];
   if (procmode == qpymode) {
     strcpy(prefix, "qpy");
@@ -334,72 +335,85 @@ void dump_csv_qp_header(char* buffer, int bufsize, int* bi, Procmode procmode) {
 
   std::vector<std::string> qp_header_vector = {"num", "min", "max", "avg", "stddev"};
   for (const auto & header : qp_header_vector) {
-    *bi += snprintf(buffer + *bi, bufsize - *bi,
+    bi += snprintf(buffer + bi, bufsize - bi,
                    ",%s.%s", prefix, header.c_str());
   }
   for (const auto & header : qp_header_vector) {
-    *bi += snprintf(buffer + *bi, bufsize - *bi,
+    bi += snprintf(buffer + bi, bufsize - bi,
                    ",%s.weighted.%s", prefix, header.c_str());
   }
   for (int qp = minPrintedQP; qp <= maxPrintedQP; qp++) {
-    *bi += snprintf(buffer + *bi, bufsize - *bi, ",%s.%i", prefix, qp);
+    bi += snprintf(buffer + bi, bufsize - bi, ",%s.%i", prefix, qp);
   }
   for (int qp = minPrintedQP; qp <= maxPrintedQP; qp++) {
-    *bi += snprintf(buffer + *bi, bufsize - *bi, ",%s.weighted.%i", prefix, qp);
+    bi += snprintf(buffer + bi, bufsize - bi, ",%s.weighted.%i", prefix, qp);
   }
+  return bi;
 }
 
 
-void dump_csv_pred_header(char* buffer, int bufsize, int* bi) {
+int dump_csv_pred_header(char* buffer, int bufsize) {
   const char* prefix = "pred";
+  int bi = 0;
 
   std::vector<std::string> pred_header_vector = {"intra", "inter", "skip", "intra_ratio", "inter_ratio", "skip_ratio"};
   for (const auto & header : pred_header_vector) {
-    *bi += snprintf(buffer + *bi, bufsize - *bi,
+    bi += snprintf(buffer + bi, bufsize - bi,
                    ",%s.%s", prefix, header.c_str());
   }
   for (const auto & header : pred_header_vector) {
-    *bi += snprintf(buffer + *bi, bufsize - *bi,
+    bi += snprintf(buffer + bi, bufsize - bi,
                    ",%s.weighted.%s", prefix, header.c_str());
   }
+  return bi;
 }
 
-void dump_csv_ctu_header(char* buffer, int bufsize, int* bi) {
+int dump_csv_ctu_header(char* buffer, int bufsize) {
   const char* prefix = "ctu";
+  int bi = 0;
 
   std::vector<std::string> ctu_header_vector = {"ctu8", "ctu16", "ctu32", "ctu64", "ctu8_ratio", "ctu16_ratio", "ctu32_ratio", "ctu64_ratio",};
   for (const auto & header : ctu_header_vector) {
-    *bi += snprintf(buffer + *bi, bufsize - *bi,
+    bi += snprintf(buffer + bi, bufsize - bi,
                    ",%s.%s", prefix, header.c_str());
   }
   for (const auto & header : ctu_header_vector) {
-    *bi += snprintf(buffer + *bi, bufsize - *bi,
+    bi += snprintf(buffer + bi, bufsize - bi,
                    ",%s.weighted.%s", prefix, header.c_str());
   }
+  return bi;
 }
 
 
-void dump_csv_header(char* buffer, int bufsize, int* bi, Procmode procmode) {
-  *bi += snprintf(buffer + *bi, bufsize - *bi,
-                  "frame");
+int dump_csv_blockmode_header(char* buffer, int bufsize) {
+  int bi = 0;
+  bi += snprintf(buffer + bi, bufsize - bi,
+                 ",xb,yb,size,qpy,qpcb,qpcr,pred_mode,ctu_size");
+  return bi;
+}
+
+
+int dump_csv_header(char* buffer, int bufsize, Procmode procmode) {
+  int bi = 0;
+  bi += snprintf(buffer + bi, bufsize - bi, "frame");
   if ((procmode == qpymode) || (procmode == qpcbmode) ||
       (procmode == qpcrmode)) {
-    dump_csv_qp_header(buffer, bufsize, bi, procmode);
+    bi += dump_csv_qp_header(buffer + bi, bufsize - bi, procmode);
   } else if (procmode == predmode) {
-    dump_csv_pred_header(buffer, bufsize, bi);
+    bi += dump_csv_pred_header(buffer + bi, bufsize - bi);
   } else if (procmode == ctumode) {
-    dump_csv_ctu_header(buffer, bufsize, bi);
+    bi += dump_csv_ctu_header(buffer + bi, bufsize - bi);
   } else if (procmode == allmode) {
-    dump_csv_qp_header(buffer, bufsize, bi, qpymode);
-    dump_csv_qp_header(buffer, bufsize, bi, qpcbmode);
-    dump_csv_qp_header(buffer, bufsize, bi, qpcrmode);
-    dump_csv_pred_header(buffer, bufsize, bi);
-    dump_csv_ctu_header(buffer, bufsize, bi);
+    bi += dump_csv_qp_header(buffer + bi, bufsize - bi, qpymode);
+    bi += dump_csv_qp_header(buffer + bi, bufsize - bi, qpcbmode);
+    bi += dump_csv_qp_header(buffer + bi, bufsize - bi, qpcrmode);
+    bi += dump_csv_pred_header(buffer + bi, bufsize - bi);
+    bi += dump_csv_ctu_header(buffer + bi, bufsize - bi);
   } else if (procmode == blockmode) {
-    *bi += snprintf(buffer + *bi, bufsize - *bi,
-                   "xb,yb,size,qpy,qpcb,qpcr,pred_mode,ctu_size");
+    bi += dump_csv_blockmode_header(buffer + bi, bufsize - bi);
   }
-  *bi += snprintf(buffer + *bi, bufsize - *bi, "\n");
+  bi += snprintf(buffer + bi, bufsize - bi, "\n");
+  return bi;
 }
 
 
@@ -589,27 +603,29 @@ void dump_block_info(de265_image* img) {
 
 void dump_image(de265_image* img) {
   // start the line
-  dump_image_frame_number(img);
-  fprintf(fout, ",");
-  if ((procmode == qpymode) || (procmode == qpcbmode) ||
-      (procmode == qpcrmode)) {
-    dump_image_qp(img, procmode);
-  } else if (procmode == predmode) {
-    dump_image_pred(img);
-  } else if (procmode == ctumode) {
-    dump_ctu_distro(img);
-  } else if (procmode == allmode) {
-    dump_image_qp(img, qpymode);
-    fprintf(fout, ",");
-    dump_image_qp(img, qpcbmode);
-    fprintf(fout, ",");
-    dump_image_qp(img, qpcrmode);
-    fprintf(fout, ",");
-    dump_image_pred(img);
-    fprintf(fout, ",");
-    dump_ctu_distro(img);
-  } else if (procmode == blockmode) {
+  if (procmode == blockmode) {
     dump_block_info(img);
+  } else {
+    dump_image_frame_number(img);
+    fprintf(fout, ",");
+    if ((procmode == qpymode) || (procmode == qpcbmode) ||
+        (procmode == qpcrmode)) {
+      dump_image_qp(img, procmode);
+    } else if (procmode == predmode) {
+      dump_image_pred(img);
+    } else if (procmode == ctumode) {
+      dump_ctu_distro(img);
+    } else if (procmode == allmode) {
+      dump_image_qp(img, qpymode);
+      fprintf(fout, ",");
+      dump_image_qp(img, qpcbmode);
+      fprintf(fout, ",");
+      dump_image_qp(img, qpcrmode);
+      fprintf(fout, ",");
+      dump_image_pred(img);
+      fprintf(fout, ",");
+      dump_ctu_distro(img);
+    }
   }
   // finish the line
   fprintf(fout, "\n");
@@ -835,7 +851,7 @@ int main(int argc, char** argv) {
   // dump the CSV header
   char buffer[BUFSIZE] = {};
   int bi = 0;
-  dump_csv_header(buffer, BUFSIZE, &bi, procmode);
+  bi += dump_csv_header(buffer + bi, BUFSIZE - bi, procmode);
   fprintf(fout, buffer);
 
   bool stop = false;
